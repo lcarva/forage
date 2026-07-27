@@ -19,7 +19,7 @@ go install github.com/lcarva/forage/cmd/forage@latest
 ```
 git clone https://github.com/lcarva/forage.git
 cd forage
-go build -o forage ./cmd/forage/
+make build
 ```
 
 ## Usage
@@ -104,6 +104,24 @@ $ forage --index-url https://packages.redhat.com/trusted-libraries/python/ \
   ]
 }
 ```
+
+## Development
+
+Run the full CI suite locally:
+
+```
+make ci
+```
+
+Individual targets are also available:
+
+| Target | Description |
+|---|---|
+| `make fmt` | Check formatting (`gofmt`) |
+| `make vet` | Run `go vet` |
+| `make test` | Run tests |
+| `make build` | Build all packages |
+| `make ci` | Run `fmt`, `vet`, and `test` |
 
 ## How it works
 
