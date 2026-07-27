@@ -6,35 +6,54 @@ Forage queries standard package index APIs to retrieve filenames, checksums, and
 
 ## Requirements
 
-- Python 3.x
-- [requests](https://pypi.org/project/requests/)
+- Go 1.25 or later
+
+## Install
 
 ```
-pip install requests
+go install github.com/lcarva/forage/cmd/forage@latest
+```
+
+### Build from source
+
+```
+git clone https://github.com/lcarva/forage.git
+cd forage
+go build -o forage ./cmd/forage/
 ```
 
 ## Usage
 
+### CLI
+
 ```
-python forage.py [-h] [--index-url INDEX_URL] [--json] [--fetch-provenance] package version
+forage [flags] <package> <version>
 ```
 
-### Arguments
+| Flag | Description | Default |
+|---|---|---|
+| `--index-url` | PEP 503 simple index URL | `https://pypi.org/simple/` |
+| `--json` | Output JSON instead of human-readable text | `false` |
+| `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
 
-| Argument | Description |
-|---|---|
-| `package` | Package name |
-| `version` | Package version |
-| `--index-url` | PEP 503 simple index URL (default: `https://pypi.org/simple/`) |
-| `--json` | Output JSON instead of human-readable text |
-| `--fetch-provenance` | Fetch and inline provenance attestation data |
+### Go library
+
+```go
+import "github.com/lcarva/forage"
+
+result, err := forage.Lookup(ctx, "requests", "2.32.2", &forage.Options{
+    IndexURL:        forage.DefaultIndexURL,
+    FetchProvenance: true,
+})
+// result.Files contains filename, sha256, provenance URL, and optionally provenance data
+```
 
 ## Examples
 
 ### Basic lookup on PyPI
 
 ```
-$ python forage.py requests 2.32.2
+$ forage requests 2.32.2
 
 requests 2.32.2
 
@@ -50,8 +69,7 @@ requests 2.32.2
 ### Custom index with provenance
 
 ```
-$ python forage.py requests 2.32.5 \
-    --index-url https://packages.redhat.com/trusted-libraries/python/
+$ forage --index-url https://packages.redhat.com/trusted-libraries/python/ requests 2.32.5
 
 requests 2.32.5
 
@@ -67,9 +85,8 @@ requests 2.32.5
 ### JSON output with fetched provenance
 
 ```
-$ python forage.py requests 2.32.5 \
-    --index-url https://packages.redhat.com/trusted-libraries/python/ \
-    --json --fetch-provenance
+$ forage --index-url https://packages.redhat.com/trusted-libraries/python/ \
+    --json --fetch-provenance requests 2.32.5
 
 {
   "package": "requests",
