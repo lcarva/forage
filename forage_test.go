@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -137,5 +138,76 @@ func TestLookup_FetchProvenance(t *testing.T) {
 	}
 	if prov["version"] != float64(1) {
 		t.Errorf("provenance version = %v", prov["version"])
+	}
+}
+
+func TestLookup_FetchProvenance_Error(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /simple/requests/", func(w http.ResponseWriter, r *http.Request) {
+		html := `<a href="/files/requests-2.32.2.tar.gz#sha256=ddeeff"
+			data-provenance="http://unreachable.invalid/provenance">requests-2.32.2.tar.gz</a>`
+		w.Write([]byte(html))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	opts := &Options{
+		IndexURL:        srv.URL + "/simple/",
+		FetchProvenance: true,
+		HTTPClient:      srv.Client(),
+	}
+	result, err := Lookup(context.Background(), "requests", "2.32.2", opts)
+	if err != nil {
+		t.Fatalf("Lookup failed: %v", err)
+	}
+	if len(result.Files) != 1 {
+		t.Fatalf("got %d files, want 1", len(result.Files))
+	}
+	f := result.Files[0]
+	if f.Provenance != nil {
+		t.Error("expected Provenance to be nil on fetch error")
+	}
+	if f.ProvenanceError == nil {
+		t.Fatal("expected ProvenanceError to be set")
+	}
+	if *f.ProvenanceError == "" {
+		t.Error("ProvenanceError should not be empty")
+	}
+}
+
+func TestLookup_FetchProvenance_ServerError(t *testing.T) {
+	mux := http.NewServeMux()
+	srv := httptest.NewServer(mux)
+	mux.HandleFunc("GET /simple/requests/", func(w http.ResponseWriter, r *http.Request) {
+		html := `<a href="/files/requests-2.32.2.tar.gz#sha256=ddeeff"
+			data-provenance="` + srv.URL + `/provenance/requests-2.32.2.tar.gz">requests-2.32.2.tar.gz</a>`
+		w.Write([]byte(html))
+	})
+	mux.HandleFunc("GET /provenance/requests-2.32.2.tar.gz", func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+	})
+	defer srv.Close()
+
+	opts := &Options{
+		IndexURL:        srv.URL + "/simple/",
+		FetchProvenance: true,
+		HTTPClient:      srv.Client(),
+	}
+	result, err := Lookup(context.Background(), "requests", "2.32.2", opts)
+	if err != nil {
+		t.Fatalf("Lookup failed: %v", err)
+	}
+	if len(result.Files) != 1 {
+		t.Fatalf("got %d files, want 1", len(result.Files))
+	}
+	f := result.Files[0]
+	if f.Provenance != nil {
+		t.Error("expected Provenance to be nil on server error")
+	}
+	if f.ProvenanceError == nil {
+		t.Fatal("expected ProvenanceError to be set")
+	}
+	if !strings.Contains(*f.ProvenanceError, "500") {
+		t.Errorf("ProvenanceError = %q, want it to mention status 500", *f.ProvenanceError)
 	}
 }

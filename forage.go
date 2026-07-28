@@ -13,11 +13,12 @@ const DefaultIndexURL = "https://pypi.org/simple/"
 
 // File represents a package distribution file discovered from an index.
 type File struct {
-	Filename      string           `json:"filename"`
-	URL           string           `json:"-"`
-	SHA256        string           `json:"sha256"`
-	ProvenanceURL *string          `json:"provenance_url"`
-	Provenance    *json.RawMessage `json:"provenance,omitempty"`
+	Filename        string           `json:"filename"`
+	URL             string           `json:"-"`
+	SHA256          string           `json:"sha256"`
+	ProvenanceURL   *string          `json:"provenance_url"`
+	Provenance      *json.RawMessage `json:"provenance,omitempty"`
+	ProvenanceError *string          `json:"provenance_error,omitempty"`
 }
 
 // Result holds the lookup results for a package version.
@@ -82,9 +83,8 @@ func Lookup(ctx context.Context, pkg, version string, opts *Options) (*Result, e
 			}
 			prov, err := fetchProvenance(ctx, client, *matched[i].ProvenanceURL)
 			if err != nil {
-				errMsg, _ := json.Marshal(map[string]string{"error": err.Error()})
-				raw := json.RawMessage(errMsg)
-				matched[i].Provenance = &raw
+				errStr := err.Error()
+				matched[i].ProvenanceError = &errStr
 			} else {
 				matched[i].Provenance = prov
 			}
