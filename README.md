@@ -2,7 +2,7 @@
 
 Discover package files, digests, and provenance from package indexes.
 
-Forage queries standard package index APIs to retrieve filenames, checksums, and supply chain provenance attestations — without relying on index-specific APIs. Currently supports [PEP 503](https://peps.python.org/pep-0503/) Python indexes (PyPI, Pulp, devpi, Artifactory, etc.), with plans to expand to other ecosystems (npm, Maven, and more).
+Forage queries standard package index APIs to retrieve filenames, checksums, and supply chain provenance attestations — without relying on index-specific APIs. Currently supports [PEP 503](https://peps.python.org/pep-0503/) Python indexes (PyPI, Pulp, devpi, Artifactory, etc.), with plans to expand to other ecosystems (npm, Maven, and more). Packages can be looked up by ecosystem (`forage python`) or via a [Package URL](https://github.com/package-url/purl-spec) (`forage purl`).
 
 ## Requirements
 
@@ -26,8 +26,12 @@ make build
 
 ### CLI
 
+Forage provides two subcommands:
+
+#### `forage python` — look up by ecosystem
+
 ```
-forage [flags] <package> <version>
+forage python [flags] <package> <version>
 ```
 
 | Flag | Description | Default |
@@ -35,6 +39,19 @@ forage [flags] <package> <version>
 | `--index-url` | PEP 503 simple index URL | `https://pypi.org/simple/` |
 | `--json` | Output JSON instead of human-readable text | `false` |
 | `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
+
+#### `forage purl` — look up by Package URL
+
+```
+forage purl [flags] <package-url>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--json` | Output JSON instead of human-readable text | `false` |
+| `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
+
+The index URL is derived from the purl's `repository_url` qualifier, falling back to `https://pypi.org/simple/` when absent. Supported purl types: `pypi`.
 
 ### Go library
 
@@ -53,7 +70,7 @@ result, err := forage.Lookup(ctx, "requests", "2.32.2", &forage.Options{
 ### Basic lookup on PyPI
 
 ```
-$ forage requests 2.32.2
+$ forage python requests 2.32.2
 
 requests 2.32.2
 
@@ -69,7 +86,7 @@ requests 2.32.2
 ### Custom index with provenance
 
 ```
-$ forage --index-url https://packages.redhat.com/trusted-libraries/python/ requests 2.32.5
+$ forage python --index-url https://packages.redhat.com/trusted-libraries/python/ requests 2.32.5
 
 requests 2.32.5
 
@@ -82,10 +99,32 @@ requests 2.32.5
     provenance: https://packages.redhat.com/api/pypi/.../provenance/
 ```
 
+### Lookup via Package URL
+
+```
+$ forage purl pkg:pypi/requests@2.32.2
+
+requests 2.32.2
+
+  requests-2.32.2-py3-none-any.whl
+    sha256: fc06670dd0ed212426dfeb94fc1b983d917c4f9847c863f313c9dfaaffb7c23c
+    provenance: (none)
+
+  requests-2.32.2.tar.gz
+    sha256: dd951ff5ecf3e3b3aa26b40703ba77495dab41da839ae72ef3c8e5d8e2433289
+    provenance: (none)
+```
+
+Use the `repository_url` qualifier to target a custom index:
+
+```
+$ forage purl "pkg:pypi/requests@2.32.5?repository_url=https://packages.redhat.com/trusted-libraries/python/"
+```
+
 ### JSON output with fetched provenance
 
 ```
-$ forage --index-url https://packages.redhat.com/trusted-libraries/python/ \
+$ forage python --index-url https://packages.redhat.com/trusted-libraries/python/ \
     --json --fetch-provenance requests 2.32.5
 
 {
