@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/lcarva/forage"
 	"github.com/spf13/cobra"
@@ -47,8 +48,10 @@ func main() {
 				}
 				fmt.Printf("    provenance: %s\n", prov)
 				if f.Provenance != nil {
-					data, _ := json.Marshal(f.Provenance)
-					fmt.Printf("    provenance data: (fetched, %d bytes)\n", len(data))
+					summary := forage.FormatProvenance(f.Provenance)
+					for _, line := range strings.Split(summary, "\n") {
+						fmt.Printf("    %s\n", line)
+					}
 				}
 				fmt.Println()
 			}
