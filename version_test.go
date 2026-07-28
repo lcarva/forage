@@ -46,6 +46,13 @@ func TestMatchesVersion(t *testing.T) {
 		{"requests.tar.gz", "requests", "1.0", false},
 		// wheel with extra build tag
 		{"requests-2.32.5-0-py3-none-any.whl", "requests", "2.32.5-0", true},
+		// post-release, dev-release, and 4-part versions should not match base version
+		{"requests-2.32.2.post1.tar.gz", "requests", "2.32.2", false},
+		{"requests-2.32.2.dev1.tar.gz", "requests", "2.32.2", false},
+		{"requests-2.32.2.1.tar.gz", "requests", "2.32.2", false},
+		// hyphenated uppercase sdist filenames
+		{"Flask-Login-0.6.3.tar.gz", "Flask-Login", "0.6.3", true},
+		{"Flask-RESTful-0.3.10.tar.gz", "Flask-RESTful", "0.3.10", true},
 	}
 	for _, tt := range tests {
 		got := matchesVersion(tt.filename, tt.pkg, tt.version)
