@@ -8,8 +8,13 @@ import (
 	"strings"
 
 	"github.com/lcarva/forage"
+	packageurl "github.com/package-url/packageurl-go"
 	"github.com/spf13/cobra"
 )
+
+var supportedPurlTypes = []string{
+	packageurl.TypePyPi,
+}
 
 func main() {
 	var outputJSON bool
@@ -42,30 +47,7 @@ func main() {
 				return err
 			}
 
-			if outputJSON {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(result)
-			}
-
-			fmt.Printf("%s %s\n\n", result.Package, result.Version)
-			for _, f := range result.Files {
-				fmt.Printf("  %s\n", f.Filename)
-				fmt.Printf("    sha256: %s\n", f.SHA256)
-				prov := "(none)"
-				if f.ProvenanceURL != nil {
-					prov = *f.ProvenanceURL
-				}
-				fmt.Printf("    provenance: %s\n", prov)
-				if f.Provenance != nil {
-					summary := forage.FormatProvenance(f.Provenance)
-					for _, line := range strings.Split(summary, "\n") {
-						fmt.Printf("    %s\n", line)
-					}
-				}
-				fmt.Println()
-			}
-			return nil
+			return printResult(result, outputJSON)
 		},
 	}
 
@@ -74,10 +56,72 @@ func main() {
 	pythonCmd.Flags().BoolVar(&fetchProvenance, "fetch-provenance", false,
 		"Fetch and inline provenance attestation data")
 
-	rootCmd.AddCommand(pythonCmd)
+	var purlFetchProvenance bool
+
+	purlCmd := &cobra.Command{
+		Use:   "purl <package-url>",
+		Short: fmt.Sprintf("Look up a package using a Package URL (purl). Supported types: %s.", strings.Join(supportedPurlTypes, ", ")),
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			purl, err := packageurl.FromString(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid purl: %w", err)
+			}
+			if purl.Version == "" {
+				return fmt.Errorf("purl must include a version: %s", args[0])
+			}
+
+			switch purl.Type {
+			case packageurl.TypePyPi:
+				opts := &forage.Options{
+					IndexURL:        purl.Qualifiers.Map()["repository_url"],
+					FetchProvenance: purlFetchProvenance,
+				}
+				result, err := forage.Lookup(context.Background(), purl.Name, purl.Version, opts)
+				if err != nil {
+					return err
+				}
+				return printResult(result, outputJSON)
+			default:
+				return fmt.Errorf("unsupported purl type %q (supported types: %s)", purl.Type, strings.Join(supportedPurlTypes, ", "))
+			}
+		},
+	}
+
+	purlCmd.Flags().BoolVar(&purlFetchProvenance, "fetch-provenance", false,
+		"Fetch and inline provenance attestation data")
+
+	rootCmd.AddCommand(pythonCmd, purlCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
 	}
+}
+
+func printResult(result *forage.Result, outputJSON bool) error {
+	if outputJSON {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(result)
+	}
+
+	fmt.Printf("%s %s\n\n", result.Package, result.Version)
+	for _, f := range result.Files {
+		fmt.Printf("  %s\n", f.Filename)
+		fmt.Printf("    sha256: %s\n", f.SHA256)
+		prov := "(none)"
+		if f.ProvenanceURL != nil {
+			prov = *f.ProvenanceURL
+		}
+		fmt.Printf("    provenance: %s\n", prov)
+		if f.Provenance != nil {
+			summary := forage.FormatProvenance(f.Provenance)
+			for line := range strings.SplitSeq(summary, "\n") {
+				fmt.Printf("    %s\n", line)
+			}
+		}
+		fmt.Println()
+	}
+	return nil
 }

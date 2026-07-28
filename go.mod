@@ -3,6 +3,7 @@ module github.com/lcarva/forage
 go 1.25.0
 
 require (
+	github.com/package-url/packageurl-go v0.1.6
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/net v0.57.0
 )
