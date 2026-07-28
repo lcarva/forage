@@ -12,13 +12,23 @@ import (
 )
 
 func main() {
-	var indexURL string
 	var outputJSON bool
+
+	rootCmd := &cobra.Command{
+		Use:           "forage",
+		Short:         "Discover package files, digests, and provenance from package indexes.",
+		SilenceUsage:  true,
+		SilenceErrors: true,
+	}
+
+	rootCmd.PersistentFlags().BoolVar(&outputJSON, "json", false, "Output JSON")
+
+	var indexURL string
 	var fetchProvenance bool
 
-	cmd := &cobra.Command{
-		Use:   "forage <package> <version>",
-		Short: "Discover package files, digests, and provenance from package indexes.",
+	pythonCmd := &cobra.Command{
+		Use:   "python <package> <version>",
+		Short: "Look up a Python package from a PEP 503 simple index.",
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pkg, version := args[0], args[1]
@@ -57,17 +67,16 @@ func main() {
 			}
 			return nil
 		},
-		SilenceUsage:  true,
-		SilenceErrors: true,
 	}
 
-	cmd.Flags().StringVar(&indexURL, "index-url", forage.DefaultIndexURL,
+	pythonCmd.Flags().StringVar(&indexURL, "index-url", forage.DefaultIndexURL,
 		"PEP 503 simple index URL")
-	cmd.Flags().BoolVar(&outputJSON, "json", false, "Output JSON")
-	cmd.Flags().BoolVar(&fetchProvenance, "fetch-provenance", false,
+	pythonCmd.Flags().BoolVar(&fetchProvenance, "fetch-provenance", false,
 		"Fetch and inline provenance attestation data")
 
-	if err := cmd.Execute(); err != nil {
+	rootCmd.AddCommand(pythonCmd)
+
+	if err := rootCmd.Execute(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %s\n", err)
 		os.Exit(1)
 	}
