@@ -104,6 +104,7 @@ func fetchIndex(ctx context.Context, client *http.Client, indexURL, pkg string) 
 	if err != nil {
 		return nil, err
 	}
+	req.Header.Set("Accept", "application/vnd.pypi.simple.v1+html, text/html;q=0.9")
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

@@ -175,6 +175,32 @@ func TestLookup_FetchProvenance_Error(t *testing.T) {
 	}
 }
 
+func TestFetchIndex_AcceptHeader(t *testing.T) {
+	var gotAccept string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotAccept = r.Header.Get("Accept")
+		if gotAccept == "" || gotAccept == "*/*" {
+			w.Header().Set("Content-Type", "application/vnd.pypi.simple.v1+json")
+			w.Write([]byte(`{"files": []}`))
+			return
+		}
+		w.Header().Set("Content-Type", "text/html")
+		w.Write([]byte(`<a href="https://example.com/pkg-1.0.tar.gz#sha256=abc123">pkg-1.0.tar.gz</a>`))
+	}))
+	defer srv.Close()
+
+	_, err := Lookup(context.Background(), "pkg", "1.0", &Options{
+		IndexURL:   srv.URL,
+		HTTPClient: srv.Client(),
+	})
+	if err != nil {
+		t.Fatalf("Lookup failed against PEP 691 server: %v", err)
+	}
+	if gotAccept == "" || gotAccept == "*/*" {
+		t.Error("fetchIndex did not set an Accept header; PEP 691 servers may return JSON instead of HTML")
+	}
+}
+
 func TestLookup_FetchProvenance_ServerError(t *testing.T) {
 	mux := http.NewServeMux()
 	srv := httptest.NewServer(mux)
