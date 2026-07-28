@@ -115,7 +115,9 @@ func printResult(result *forage.Result, outputJSON bool) error {
 			prov = *f.ProvenanceURL
 		}
 		fmt.Printf("    provenance: %s\n", prov)
-		if f.Provenance != nil {
+		if f.ProvenanceError != nil {
+			fmt.Printf("    (provenance fetch failed: %s)\n", *f.ProvenanceError)
+		} else if f.Provenance != nil {
 			summary := forage.FormatProvenance(f.Provenance)
 			for line := range strings.SplitSeq(summary, "\n") {
 				fmt.Printf("    %s\n", line)
