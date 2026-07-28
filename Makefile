@@ -2,7 +2,7 @@
 
 
 build:
-	go build ./...
+	go build -o bin/forage ./cmd/forage
 
 test:
 	go test ./...
