@@ -58,7 +58,7 @@ The index URL is derived from the purl's `repository_url` qualifier, falling bac
 ```go
 import "github.com/lcarva/forage"
 
-result, err := forage.Lookup(ctx, "requests", "2.32.2", &forage.Options{
+result, err := forage.Lookup(ctx, "cryptography", "48.0.0", &forage.Options{
     IndexURL:        forage.DefaultIndexURL,
     FetchProvenance: true,
 })
@@ -70,32 +70,38 @@ result, err := forage.Lookup(ctx, "requests", "2.32.2", &forage.Options{
 ### Basic lookup on PyPI
 
 ```
-$ forage python requests 2.32.2
+$ forage python cryptography 48.0.0
 
-requests 2.32.2
+cryptography 48.0.0
 
-  requests-2.32.2-py3-none-any.whl
-    sha256: fc06670dd0ed212426dfeb94fc1b983d917c4f9847c863f313c9dfaaffb7c23c
-    provenance: (none)
+  cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl
+    sha256: 0c558d2cdffd8f4bbb30fc7134c74d2ca9a476f830bb053074498fbc86f41ed6
+    provenance: https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl/provenance
 
-  requests-2.32.2.tar.gz
-    sha256: dd951ff5ecf3e3b3aa26b40703ba77495dab41da839ae72ef3c8e5d8e2433289
-    provenance: (none)
+  cryptography-48.0.0-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl
+    sha256: f5333311663ea94f75dd408665686aaf426563556bb5283554a3539177e03b8c
+    provenance: https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0-cp311-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl/provenance
+
+  ... (additional platform-specific wheels omitted)
+
+  cryptography-48.0.0.tar.gz
+    sha256: 5c3932f4436d1cccb036cb0eaef46e6e2db91035166f1ad6505c3c9d5a635920
+    provenance: https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0.tar.gz/provenance
 ```
 
 ### Custom index with provenance
 
 ```
-$ forage python --index-url https://packages.redhat.com/trusted-libraries/python/ requests 2.32.5
+$ forage python --index-url https://packages.redhat.com/trusted-libraries/python/ cryptography 48.0.0
 
-requests 2.32.5
+cryptography 48.0.0
 
-  requests-2.32.5-0-py3-none-any.whl
-    sha256: 2228e951928fab47a74f7be4f533eaf1f389e08a4f8dac3da76e2ec0552f9cf5
+  cryptography-48.0.0-0-cp312-abi3-manylinux_2_28_x86_64.whl
+    sha256: 8bff3de351be0bcbb36d620376de068f2076d39906a9cff380a3de6523581de2
     provenance: https://packages.redhat.com/api/pypi/.../provenance/
 
-  requests-2.32.5.tar.gz
-    sha256: 8477bb641a004933eaa481124a3917dd3b384256ad4eff3084afd53d6503a8c0
+  cryptography-48.0.0.tar.gz
+    sha256: b69f619d07bdd1b98302fcb26332232b7b5d0bb17f73d92b53d495f6d2fa196d
     provenance: https://packages.redhat.com/api/pypi/.../provenance/
 ```
 
@@ -124,20 +130,22 @@ $ forage purl "pkg:pypi/requests@2.32.5?repository_url=https://packages.redhat.c
 ### JSON output with fetched provenance
 
 ```
-$ forage python --index-url https://packages.redhat.com/trusted-libraries/python/ \
-    --json --fetch-provenance requests 2.32.5
+$ forage python --json --fetch-provenance cryptography 48.0.0
 
 {
-  "package": "requests",
-  "version": "2.32.5",
+  "package": "cryptography",
+  "version": "48.0.0",
   "files": [
     {
-      "filename": "requests-2.32.5-0-py3-none-any.whl",
-      "sha256": "2228e951928fab47a74f7be4f533eaf1f389e08a4f8dac3da76e2ec0552f9cf5",
-      "provenance_url": "https://...",
+      "filename": "cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl",
+      "sha256": "0c558d2cdffd8f4bbb30fc7134c74d2ca9a476f830bb053074498fbc86f41ed6",
+      "provenance_url": "https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl/provenance",
       "provenance": {
-        "version": 1,
-        "attestation_bundles": [...]
+        "attestation_bundles": [
+          {
+            "attestations": ["..."]
+          }
+        ]
       }
     }
   ]
