@@ -94,3 +94,49 @@ func TestFormatProvenance_Malformed(t *testing.T) {
 		t.Errorf("FormatProvenance(malformed) = %q", result)
 	}
 }
+
+func TestFormatProvenance_Npm(t *testing.T) {
+	input := `{
+		"attestations": [
+			{
+				"predicateType": "https://slsa.dev/provenance/v1",
+				"bundle": {}
+			},
+			{
+				"predicateType": "https://github.com/npm/attestation/tree/main/specs/publish/v0.1",
+				"bundle": {}
+			}
+		]
+	}`
+	raw := json.RawMessage(input)
+	result := FormatProvenance(&raw)
+
+	want := []string{
+		"attestations: 2",
+		"https://slsa.dev/provenance/v1",
+		"https://github.com/npm/attestation/tree/main/specs/publish/v0.1",
+		"(use --json for full provenance data)",
+	}
+	for _, w := range want {
+		if !strings.Contains(result, w) {
+			t.Errorf("FormatProvenance() = %q, missing %q", result, w)
+		}
+	}
+}
+
+func TestFormatProvenance_NpmSingleAttestation(t *testing.T) {
+	input := `{
+		"attestations": [
+			{
+				"predicateType": "https://slsa.dev/provenance/v1",
+				"bundle": {}
+			}
+		]
+	}`
+	raw := json.RawMessage(input)
+	result := FormatProvenance(&raw)
+
+	if !strings.Contains(result, "attestations: 1") {
+		t.Errorf("FormatProvenance() = %q, missing attestations count", result)
+	}
+}

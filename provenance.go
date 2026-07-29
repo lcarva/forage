@@ -22,10 +22,24 @@ type publisher struct {
 	Workflow   string `json:"workflow"`
 }
 
+type npmAttestationResponse struct {
+	Attestations []npmAttestation `json:"attestations"`
+}
+
+type npmAttestation struct {
+	PredicateType string          `json:"predicateType"`
+	Bundle        json.RawMessage `json:"bundle"`
+}
+
 // FormatProvenance returns a human-readable summary of provenance data.
 func FormatProvenance(raw *json.RawMessage) string {
 	if raw == nil {
 		return "(no provenance data)"
+	}
+
+	var npmAtt npmAttestationResponse
+	if err := json.Unmarshal(*raw, &npmAtt); err == nil && len(npmAtt.Attestations) > 0 {
+		return formatNpmProvenance(npmAtt)
 	}
 
 	var env provenanceEnvelope
@@ -44,6 +58,16 @@ func FormatProvenance(raw *json.RawMessage) string {
 		lines = append(lines, "(no attestation bundles)")
 	}
 
+	lines = append(lines, "(use --json for full provenance data)")
+	return strings.Join(lines, "\n")
+}
+
+func formatNpmProvenance(att npmAttestationResponse) string {
+	var lines []string
+	lines = append(lines, fmt.Sprintf("attestations: %d", len(att.Attestations)))
+	for _, a := range att.Attestations {
+		lines = append(lines, fmt.Sprintf("  - %s", a.PredicateType))
+	}
 	lines = append(lines, "(use --json for full provenance data)")
 	return strings.Join(lines, "\n")
 }
