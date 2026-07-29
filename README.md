@@ -2,7 +2,7 @@
 
 Discover package files, digests, and provenance from package indexes.
 
-Forage queries standard package index APIs to retrieve filenames, checksums, and supply chain provenance attestations — without relying on index-specific APIs. Currently supports [PEP 503](https://peps.python.org/pep-0503/) Python indexes (PyPI, Pulp, devpi, Artifactory, etc.), with plans to expand to other ecosystems (npm, Maven, and more). Packages can be looked up by ecosystem (`forage python`) or via a [Package URL](https://github.com/package-url/purl-spec) (`forage purl`).
+Forage queries standard package index APIs to retrieve filenames, checksums, and supply chain provenance attestations — without relying on index-specific APIs. Currently supports [PEP 503](https://peps.python.org/pep-0503/) Python indexes (PyPI, Pulp, devpi, Artifactory, etc.) and the [npm registry](https://docs.npmjs.com/cli/v10/using-npm/registry), with plans to expand to more ecosystems (Maven and others). Packages can be looked up by ecosystem (`forage python`, `forage npm`) or via a [Package URL](https://github.com/package-url/purl-spec) (`forage purl`).
 
 ## Requirements
 
@@ -26,9 +26,9 @@ make build
 
 ### CLI
 
-Forage provides two subcommands:
+Forage provides three subcommands:
 
-#### `forage python` — look up by ecosystem
+#### `forage python` — look up a Python package
 
 ```
 forage python [flags] <package> <version>
@@ -37,6 +37,18 @@ forage python [flags] <package> <version>
 | Flag | Description | Default |
 |---|---|---|
 | `--index-url` | PEP 503 simple index URL | `https://pypi.org/simple/` |
+| `--json` | Output JSON instead of human-readable text | `false` |
+| `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
+
+#### `forage npm` — look up an npm package
+
+```
+forage npm [flags] <package> <version>
+```
+
+| Flag | Description | Default |
+|---|---|---|
+| `--index-url` | npm registry URL | `https://registry.npmjs.org` |
 | `--json` | Output JSON instead of human-readable text | `false` |
 | `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
 
@@ -51,18 +63,25 @@ forage purl [flags] <package-url>
 | `--json` | Output JSON instead of human-readable text | `false` |
 | `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
 
-The index URL is derived from the purl's `repository_url` qualifier, falling back to `https://pypi.org/simple/` when absent. Supported purl types: `pypi`.
+The index URL is derived from the purl's `repository_url` qualifier, falling back to the ecosystem default when absent. Supported purl types: `npm`, `pypi`.
 
 ### Go library
 
 ```go
 import "github.com/lcarva/forage"
 
+// Python (PEP 503)
 result, err := forage.Lookup(ctx, "cryptography", "48.0.0", &forage.Options{
     IndexURL:        forage.DefaultIndexURL,
     FetchProvenance: true,
 })
-// result.Files contains filename, sha256, provenance URL, and optionally provenance data
+
+// npm
+result, err := forage.NpmLookup(ctx, "express", "4.21.2", &forage.Options{
+    IndexURL:        forage.DefaultNpmIndexURL,
+    FetchProvenance: true,
+})
+// result.Files contains filename, integrity/shasum, and optionally provenance data
 ```
 
 ## Examples
@@ -105,6 +124,49 @@ cryptography 48.0.0
     provenance: https://packages.redhat.com/api/pypi/.../provenance/
 ```
 
+### Basic npm lookup
+
+```
+$ forage npm express 4.21.2
+
+express 4.21.2
+
+  express-4.21.2.tgz
+    integrity: sha512-28HqgMZAmih1Czt9ny7qr6ek2qddF4FclbMzwhCREB6OFfH+rXAnuNCwo1/wFvrtbgsQDb4kSbX9de9lFbrXnA==
+    shasum: 3d462be8e2e301d287110edaa19036e9a91e5d42
+    provenance: (none)
+```
+
+### Scoped npm package
+
+```
+$ forage npm @babel/core 7.26.10
+
+@babel/core 7.26.10
+
+  core-7.26.10.tgz
+    integrity: sha512-vMqyb7XCDMPvJFFOaT9kxtiRh42GwlZEg1/uIgtZshS5a/CjY5QOWIPfLEBauQnEbHeIYh5Oo3sxACIg0MJnQ==
+    shasum: 754a8d29575463a1c1a72427bde5645de49a694b
+    provenance: (none)
+```
+
+### npm lookup with provenance
+
+```
+$ forage npm --fetch-provenance sigstore 3.1.0
+
+sigstore 3.1.0
+
+  sigstore-3.1.0.tgz
+    integrity: sha512-...
+    shasum: ...
+    provenance: (none)
+    attestations: 2
+      - https://slsa.dev/provenance/v1
+      - https://github.com/npm/attestation/tree/main/specs/publish/v0.1
+    (use --json for full provenance data)
+```
+
 ### Lookup via Package URL
 
 ```
@@ -125,6 +187,13 @@ Use the `repository_url` qualifier to target a custom index:
 
 ```
 $ forage purl "pkg:pypi/requests@2.32.5?repository_url=https://packages.redhat.com/trusted-libraries/python/"
+```
+
+npm purl lookups work the same way. Scoped packages use the purl namespace:
+
+```
+$ forage purl pkg:npm/express@4.21.2
+$ forage purl pkg:npm/%40babel/core@7.26.10
 ```
 
 ### JSON output with fetched provenance
@@ -184,14 +253,22 @@ For Python indexes, Forage uses the [PEP 503 Simple Repository API](https://peps
 
 This approach is entirely standards-based and does not depend on any index-specific API (e.g. PyPI's JSON API or Pulp's REST API).
 
+For npm packages, Forage uses the [npm registry API](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md):
+
+1. Fetches the version metadata for the given package (`{registry}/{package}/{version}`)
+2. Extracts from the `dist` object:
+   - **Filename** — from the tarball URL
+   - **Integrity** — Subresource Integrity hash (e.g. `sha512-...`)
+   - **Shasum** — SHA-1 hash
+3. Optionally fetches provenance attestations from the registry's attestation endpoint (`/-/npm/v1/attestations/{package}@{version}`)
+
 ## Notes on provenance
 
 The `data-provenance` attribute is defined by [PEP 740](https://peps.python.org/pep-0740/). Not all indexes support it — when absent, the provenance field will show `(none)` or `null`. The attestation bundles typically contain [in-toto](https://in-toto.io/) statements with [SLSA](https://slsa.dev/) provenance predicates.
 
 ## Roadmap
 
-Forage currently supports Python (PEP 503) indexes. Future ecosystem support is planned:
+Forage currently supports Python (PEP 503) indexes and the npm registry. Future ecosystem support is planned:
 
-- **npm** — query the npm registry for package tarballs, digests, and provenance
 - **Maven** — query Maven Central / Sonatype for artifact checksums and signatures
 - **Additional ecosystems** — contributions welcome
