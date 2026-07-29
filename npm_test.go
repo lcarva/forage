@@ -58,8 +58,8 @@ func TestNpmLookup(t *testing.T) {
 	defer srv.Close()
 
 	opts := &Options{
-		IndexURL:   srv.URL,
-		HTTPClient: srv.Client(),
+		RegistryURL: srv.URL,
+		HTTPClient:  srv.Client(),
 	}
 	result, err := NpmLookup(context.Background(), "sigstore", "2.3.1", opts)
 	if err != nil {
@@ -91,8 +91,8 @@ func TestNpmLookup_ScopedPackage(t *testing.T) {
 	defer srv.Close()
 
 	opts := &Options{
-		IndexURL:   srv.URL,
-		HTTPClient: srv.Client(),
+		RegistryURL: srv.URL,
+		HTTPClient:  srv.Client(),
 	}
 	result, err := NpmLookup(context.Background(), "@scope/mypkg", "1.0.0", opts)
 	if err != nil {
@@ -114,8 +114,8 @@ func TestNpmLookup_NotFound(t *testing.T) {
 	defer srv.Close()
 
 	opts := &Options{
-		IndexURL:   srv.URL,
-		HTTPClient: srv.Client(),
+		RegistryURL: srv.URL,
+		HTTPClient:  srv.Client(),
 	}
 	_, err := NpmLookup(context.Background(), "nonexistent", "1.0.0", opts)
 	if err == nil {
@@ -126,10 +126,10 @@ func TestNpmLookup_NotFound(t *testing.T) {
 	}
 }
 
-func TestNpmLookup_DefaultIndex(t *testing.T) {
+func TestNpmLookup_DefaultRegistry(t *testing.T) {
 	opts := &Options{}
-	if opts.IndexURL != "" {
-		t.Fatal("expected empty IndexURL to use default")
+	if opts.RegistryURL != "" {
+		t.Fatal("expected empty RegistryURL to use default")
 	}
 }
 
@@ -150,7 +150,7 @@ func TestNpmLookup_FetchProvenance(t *testing.T) {
 	defer srv.Close()
 
 	opts := &Options{
-		IndexURL:        srv.URL,
+		RegistryURL:     srv.URL,
 		FetchProvenance: true,
 		HTTPClient:      srv.Client(),
 	}
@@ -190,7 +190,7 @@ func TestNpmLookup_FetchProvenance_Error(t *testing.T) {
 	})
 
 	opts := &Options{
-		IndexURL:        srv.URL,
+		RegistryURL:     srv.URL,
 		FetchProvenance: true,
 		HTTPClient:      srv.Client(),
 	}
@@ -257,8 +257,8 @@ func TestNpmLookup_AcceptHeader(t *testing.T) {
 	defer srv.Close()
 
 	_, err := NpmLookup(context.Background(), "testpkg", "1.0.0", &Options{
-		IndexURL:   srv.URL,
-		HTTPClient: srv.Client(),
+		RegistryURL: srv.URL,
+		HTTPClient:  srv.Client(),
 	})
 	if err != nil {
 		t.Fatalf("NpmLookup failed: %v", err)

@@ -24,13 +24,13 @@ type npmDist struct {
 
 // NpmLookup queries an npm registry for the distribution file of the given package and version.
 func NpmLookup(ctx context.Context, pkg, version string, opts *Options) (*Result, error) {
-	indexURL := DefaultNpmIndexURL
-	if opts != nil && opts.IndexURL != "" {
-		indexURL = opts.IndexURL
+	registryURL := DefaultNpmRegistryURL
+	if opts != nil && opts.RegistryURL != "" {
+		registryURL = opts.RegistryURL
 	}
 	client := opts.httpClient()
 
-	meta, err := fetchNpmVersionMeta(ctx, client, indexURL, pkg, version)
+	meta, err := fetchNpmVersionMeta(ctx, client, registryURL, pkg, version)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func NpmLookup(ctx context.Context, pkg, version string, opts *Options) (*Result
 	}
 
 	if opts != nil && opts.FetchProvenance {
-		provURL := npmAttestationURL(indexURL, pkg, version)
+		provURL := npmAttestationURL(registryURL, pkg, version)
 		prov, err := fetchProvenance(ctx, client, provURL)
 		if err != nil {
 			errStr := err.Error()
