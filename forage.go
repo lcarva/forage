@@ -10,12 +10,15 @@ import (
 )
 
 const DefaultIndexURL = "https://pypi.org/simple/"
+const DefaultNpmIndexURL = "https://registry.npmjs.org"
 
 // File represents a package distribution file discovered from an index.
 type File struct {
 	Filename        string           `json:"filename"`
 	URL             string           `json:"-"`
-	SHA256          string           `json:"sha256"`
+	SHA256          string           `json:"sha256,omitempty"`
+	Integrity       string           `json:"integrity,omitempty"`
+	Shasum          string           `json:"shasum,omitempty"`
 	ProvenanceURL   *string          `json:"provenance_url"`
 	Provenance      *json.RawMessage `json:"provenance,omitempty"`
 	ProvenanceError *string          `json:"provenance_error,omitempty"`
