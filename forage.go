@@ -10,7 +10,7 @@ import (
 )
 
 const DefaultIndexURL = "https://pypi.org/simple/"
-const DefaultNpmIndexURL = "https://registry.npmjs.org"
+const DefaultNpmRegistryURL = "https://registry.npmjs.org"
 
 // File represents a package distribution file discovered from an index.
 type File struct {
@@ -34,6 +34,7 @@ type Result struct {
 // Options configures a Lookup call.
 type Options struct {
 	IndexURL        string
+	RegistryURL     string
 	FetchProvenance bool
 	HTTPClient      *http.Client
 }

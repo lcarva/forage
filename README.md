@@ -48,7 +48,7 @@ forage npm [flags] <package> <version>
 
 | Flag | Description | Default |
 |---|---|---|
-| `--index-url` | npm registry URL | `https://registry.npmjs.org` |
+| `--registry-url` | npm registry URL | `https://registry.npmjs.org` |
 | `--json` | Output JSON instead of human-readable text | `false` |
 | `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
 
@@ -78,7 +78,7 @@ result, err := forage.Lookup(ctx, "cryptography", "48.0.0", &forage.Options{
 
 // npm
 result, err := forage.NpmLookup(ctx, "express", "4.21.2", &forage.Options{
-    IndexURL:        forage.DefaultNpmIndexURL,
+    RegistryURL:     forage.DefaultNpmRegistryURL,
     FetchProvenance: true,
 })
 // result.Files contains filename, integrity/shasum, and optionally provenance data

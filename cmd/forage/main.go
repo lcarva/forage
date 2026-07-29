@@ -57,7 +57,7 @@ func main() {
 	pythonCmd.Flags().BoolVar(&fetchProvenance, "fetch-provenance", false,
 		"Fetch and inline provenance attestation data")
 
-	var npmIndexURL string
+	var npmRegistryURL string
 	var npmFetchProvenance bool
 
 	npmCmd := &cobra.Command{
@@ -67,7 +67,7 @@ func main() {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pkg, version := args[0], args[1]
 			opts := &forage.Options{
-				IndexURL:        npmIndexURL,
+				RegistryURL:     npmRegistryURL,
 				FetchProvenance: npmFetchProvenance,
 			}
 			result, err := forage.NpmLookup(context.Background(), pkg, version, opts)
@@ -78,7 +78,7 @@ func main() {
 		},
 	}
 
-	npmCmd.Flags().StringVar(&npmIndexURL, "index-url", forage.DefaultNpmIndexURL,
+	npmCmd.Flags().StringVar(&npmRegistryURL, "registry-url", forage.DefaultNpmRegistryURL,
 		"npm registry URL")
 	npmCmd.Flags().BoolVar(&npmFetchProvenance, "fetch-provenance", false,
 		"Fetch and inline provenance attestation data")
@@ -105,7 +105,7 @@ func main() {
 					fullName = purl.Namespace + "/" + purl.Name
 				}
 				opts := &forage.Options{
-					IndexURL:        purl.Qualifiers.Map()["repository_url"],
+					RegistryURL:     purl.Qualifiers.Map()["repository_url"],
 					FetchProvenance: purlFetchProvenance,
 				}
 				result, err := forage.NpmLookup(context.Background(), fullName, purl.Version, opts)
