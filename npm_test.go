@@ -2,7 +2,6 @@ package forage
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -168,13 +167,17 @@ func TestNpmLookup_FetchProvenance(t *testing.T) {
 	if f.Provenance == nil {
 		t.Fatal("expected provenance data")
 	}
-	var att map[string]any
-	if err := json.Unmarshal(*f.Provenance, &att); err != nil {
-		t.Fatalf("invalid provenance JSON: %v", err)
+	if f.Provenance.Publisher != nil {
+		t.Error("expected nil publisher for npm")
 	}
-	attestations, ok := att["attestations"].([]any)
-	if !ok || len(attestations) != 2 {
-		t.Errorf("expected 2 attestations, got %v", att["attestations"])
+	if len(f.Provenance.Attestations) != 2 {
+		t.Fatalf("got %d attestations, want 2", len(f.Provenance.Attestations))
+	}
+	if f.Provenance.Attestations[0].PredicateType != "https://slsa.dev/provenance/v1" {
+		t.Errorf("predicateType = %q", f.Provenance.Attestations[0].PredicateType)
+	}
+	if f.Provenance.Attestations[0].MediaType != "application/vnd.dev.sigstore.bundle.v0.3+json" {
+		t.Errorf("mediaType = %q", f.Provenance.Attestations[0].MediaType)
 	}
 }
 

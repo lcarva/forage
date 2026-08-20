@@ -2,7 +2,7 @@ package forage
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -98,23 +98,25 @@ func TestLookup_NoVersionMatch(t *testing.T) {
 }
 
 func TestLookup_FetchProvenance(t *testing.T) {
-	provJSON := `{"version":1,"attestation_bundles":[{"bundle":"data"}]}`
-	srv := newTestServer(t, provJSON)
-	defer srv.Close()
+	stmt := `{"predicateType":"https://docs.pypi.org/attestations/publish/v1"}`
+	encoded := base64.StdEncoding.EncodeToString([]byte(stmt))
+	provJSON := `{"version":1,"attestation_bundles":[{
+		"publisher":{"kind":"GitHub","repository":"psf/requests","workflow":"release.yml"},
+		"attestations":[{"version":1,"envelope":{"statement":"` + encoded + `","signature":"sig"},"verification_material":{}}]
+	}]}`
 
-	// We need the index HTML to have a provenance URL that points to our server.
-	// Override the mux to serve HTML with the correct provenance URL.
 	mux := http.NewServeMux()
+	provSrv := httptest.NewUnstartedServer(mux)
 	mux.HandleFunc("GET /simple/requests/", func(w http.ResponseWriter, r *http.Request) {
 		html := `<a href="/files/requests-2.32.2.tar.gz#sha256=ddeeff"
-			data-provenance="` + srv.URL + `/provenance/requests-2.32.2.tar.gz">requests-2.32.2.tar.gz</a>`
+			data-provenance="` + provSrv.URL + `/provenance/requests-2.32.2.tar.gz">requests-2.32.2.tar.gz</a>`
 		w.Write([]byte(html))
 	})
 	mux.HandleFunc("GET /provenance/requests-2.32.2.tar.gz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(provJSON))
 	})
-	provSrv := httptest.NewServer(mux)
+	provSrv.Start()
 	defer provSrv.Close()
 
 	opts := &Options{
@@ -129,15 +131,18 @@ func TestLookup_FetchProvenance(t *testing.T) {
 	if len(result.Files) != 1 {
 		t.Fatalf("got %d files, want 1", len(result.Files))
 	}
-	if result.Files[0].Provenance == nil {
+	prov := result.Files[0].Provenance
+	if prov == nil {
 		t.Fatal("expected provenance data")
 	}
-	var prov map[string]any
-	if err := json.Unmarshal(*result.Files[0].Provenance, &prov); err != nil {
-		t.Fatalf("invalid provenance JSON: %v", err)
+	if prov.Publisher == nil || prov.Publisher.Kind != "GitHub" {
+		t.Errorf("expected GitHub publisher, got %+v", prov.Publisher)
 	}
-	if prov["version"] != float64(1) {
-		t.Errorf("provenance version = %v", prov["version"])
+	if len(prov.Attestations) != 1 {
+		t.Fatalf("got %d attestations, want 1", len(prov.Attestations))
+	}
+	if prov.Attestations[0].PredicateType != "https://docs.pypi.org/attestations/publish/v1" {
+		t.Errorf("predicateType = %q", prov.Attestations[0].PredicateType)
 	}
 }
 

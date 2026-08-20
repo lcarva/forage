@@ -53,12 +53,18 @@ func NpmLookup(ctx context.Context, pkg, version string, opts *Options) (*Result
 
 	if opts != nil && opts.FetchProvenance {
 		provURL := npmAttestationURL(registryURL, pkg, version)
-		prov, err := fetchProvenance(ctx, client, provURL)
+		raw, err := fetchProvenance(ctx, client, provURL)
 		if err != nil {
 			errStr := err.Error()
 			file.ProvenanceError = &errStr
 		} else {
-			file.Provenance = prov
+			prov, err := normalizeNpmProvenance(raw)
+			if err != nil {
+				errStr := err.Error()
+				file.ProvenanceError = &errStr
+			} else {
+				file.Provenance = prov
+			}
 		}
 	}
 

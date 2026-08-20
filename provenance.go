@@ -1,10 +1,13 @@
 package forage
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"strings"
 )
+
+const mediaTypePyPIAttestation = "application/vnd.pypi.attestation+json"
 
 type provenanceEnvelope struct {
 	Version            int                 `json:"version"`
@@ -12,14 +15,8 @@ type provenanceEnvelope struct {
 }
 
 type attestationBundle struct {
-	Publisher    publisher         `json:"publisher"`
+	Publisher    Publisher         `json:"publisher"`
 	Attestations []json.RawMessage `json:"attestations"`
-}
-
-type publisher struct {
-	Kind       string `json:"kind"`
-	Repository string `json:"repository"`
-	Workflow   string `json:"workflow"`
 }
 
 type npmAttestationResponse struct {
@@ -31,30 +28,102 @@ type npmAttestation struct {
 	Bundle        json.RawMessage `json:"bundle"`
 }
 
+func normalizePyPIProvenance(raw []byte) (*Provenance, error) {
+	var env provenanceEnvelope
+	if err := json.Unmarshal(raw, &env); err != nil {
+		return nil, fmt.Errorf("parsing PyPI provenance: %w", err)
+	}
+
+	var pub *Publisher
+	var attestations []Attestation
+	for _, bundle := range env.AttestationBundles {
+		if pub == nil {
+			p := bundle.Publisher
+			pub = &p
+		}
+		for _, raw := range bundle.Attestations {
+			attestations = append(attestations, Attestation{
+				MediaType:     mediaTypePyPIAttestation,
+				PredicateType: extractPredicateType(raw),
+				Bundle:        raw,
+			})
+		}
+	}
+
+	return &Provenance{
+		Publisher:    pub,
+		Attestations: attestations,
+	}, nil
+}
+
+func normalizeNpmProvenance(raw []byte) (*Provenance, error) {
+	var resp npmAttestationResponse
+	if err := json.Unmarshal(raw, &resp); err != nil {
+		return nil, fmt.Errorf("parsing npm provenance: %w", err)
+	}
+
+	var attestations []Attestation
+	for _, a := range resp.Attestations {
+		attestations = append(attestations, Attestation{
+			MediaType:     extractBundleMediaType(a.Bundle),
+			PredicateType: a.PredicateType,
+			Bundle:        a.Bundle,
+		})
+	}
+
+	return &Provenance{Attestations: attestations}, nil
+}
+
+func extractBundleMediaType(bundle json.RawMessage) string {
+	var m struct {
+		MediaType string `json:"mediaType"`
+	}
+	if err := json.Unmarshal(bundle, &m); err == nil && m.MediaType != "" {
+		return m.MediaType
+	}
+	return "application/vnd.dev.sigstore.bundle+json"
+}
+
+func extractPredicateType(attestation json.RawMessage) string {
+	var att struct {
+		Envelope struct {
+			Statement string `json:"statement"`
+		} `json:"envelope"`
+	}
+	if err := json.Unmarshal(attestation, &att); err != nil || att.Envelope.Statement == "" {
+		return ""
+	}
+	decoded, err := base64.StdEncoding.DecodeString(att.Envelope.Statement)
+	if err != nil {
+		return ""
+	}
+	var stmt struct {
+		PredicateType string `json:"predicateType"`
+	}
+	if err := json.Unmarshal(decoded, &stmt); err != nil {
+		return ""
+	}
+	return stmt.PredicateType
+}
+
 // FormatProvenance returns a human-readable summary of provenance data.
-func FormatProvenance(raw *json.RawMessage) string {
-	if raw == nil {
+func FormatProvenance(p *Provenance) string {
+	if p == nil {
 		return "(no provenance data)"
 	}
 
-	var npmAtt npmAttestationResponse
-	if err := json.Unmarshal(*raw, &npmAtt); err == nil && len(npmAtt.Attestations) > 0 {
-		return formatNpmProvenance(npmAtt)
-	}
-
-	var env provenanceEnvelope
-	if err := json.Unmarshal(*raw, &env); err != nil {
-		return "(unable to parse provenance data)"
-	}
-
 	var lines []string
-	for _, bundle := range env.AttestationBundles {
-		pub := formatPublisher(bundle.Publisher)
-		lines = append(lines, fmt.Sprintf("publisher: %s", pub))
-		lines = append(lines, fmt.Sprintf("attestations: %d", len(bundle.Attestations)))
+	if p.Publisher != nil {
+		lines = append(lines, fmt.Sprintf("publisher: %s", formatPublisher(*p.Publisher)))
+	}
+	lines = append(lines, fmt.Sprintf("attestations: %d", len(p.Attestations)))
+	for _, a := range p.Attestations {
+		if a.PredicateType != "" {
+			lines = append(lines, fmt.Sprintf("  - %s", a.PredicateType))
+		}
 	}
 
-	if len(lines) == 0 {
+	if len(p.Attestations) == 0 {
 		lines = append(lines, "(no attestation bundles)")
 	}
 
@@ -62,17 +131,7 @@ func FormatProvenance(raw *json.RawMessage) string {
 	return strings.Join(lines, "\n")
 }
 
-func formatNpmProvenance(att npmAttestationResponse) string {
-	var lines []string
-	lines = append(lines, fmt.Sprintf("attestations: %d", len(att.Attestations)))
-	for _, a := range att.Attestations {
-		lines = append(lines, fmt.Sprintf("  - %s", a.PredicateType))
-	}
-	lines = append(lines, "(use --json for full provenance data)")
-	return strings.Join(lines, "\n")
-}
-
-func formatPublisher(p publisher) string {
+func formatPublisher(p Publisher) string {
 	var parts []string
 	if p.Repository != "" {
 		parts = append(parts, p.Repository)

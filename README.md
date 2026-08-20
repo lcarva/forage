@@ -215,9 +215,16 @@ $ forage python --json --fetch-provenance cryptography 48.0.0
       ],
       "provenance_url": "https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl/provenance",
       "provenance": {
-        "attestation_bundles": [
+        "publisher": {
+          "kind": "GitHub",
+          "repository": "pyca/cryptography",
+          "workflow": "pypi-publish.yml"
+        },
+        "attestations": [
           {
-            "attestations": ["..."]
+            "mediaType": "application/vnd.pypi.attestation+json",
+            "predicateType": "https://docs.pypi.org/attestations/publish/v1",
+            "bundle": {"..."}
           }
         ]
       }
@@ -268,7 +275,11 @@ For npm packages, Forage uses the [npm registry API](https://github.com/npm/regi
 
 ## Notes on provenance
 
-The `data-provenance` attribute is defined by [PEP 740](https://peps.python.org/pep-0740/). Not all indexes support it — when absent, the provenance field will show `(none)` or `null`. The attestation bundles typically contain [in-toto](https://in-toto.io/) statements with [SLSA](https://slsa.dev/) provenance predicates.
+Provenance attestation data is normalized into a common format across all ecosystems. Each attestation includes a `mediaType` (so downstream consumers know how to verify it), an optional `predicateType`, and the verbatim `bundle` from the source registry. The bundle is preserved as-is for signature verification — only the outer structure is normalized.
+
+For Python/PyPI, the `data-provenance` attribute is defined by [PEP 740](https://peps.python.org/pep-0740/). Not all indexes support it — when absent, the provenance field will show `(none)` or `null`. PyPI attestation bundles use `application/vnd.pypi.attestation+json` as their media type.
+
+For npm, attestations are fetched from the registry's attestation endpoint and use Sigstore bundles (`application/vnd.dev.sigstore.bundle+json`).
 
 ## Roadmap
 
