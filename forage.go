@@ -11,6 +11,26 @@ import (
 	"strings"
 )
 
+// Provenance holds normalized, ecosystem-agnostic provenance attestation data.
+type Provenance struct {
+	Publisher    *Publisher    `json:"publisher,omitempty"`
+	Attestations []Attestation `json:"attestations"`
+}
+
+// Attestation is a single normalized attestation entry.
+type Attestation struct {
+	MediaType     string          `json:"mediaType"`
+	PredicateType string          `json:"predicateType,omitempty"`
+	Bundle        json.RawMessage `json:"bundle"`
+}
+
+// Publisher describes who published the attestations.
+type Publisher struct {
+	Kind       string `json:"kind"`
+	Repository string `json:"repository,omitempty"`
+	Workflow   string `json:"workflow,omitempty"`
+}
+
 const DefaultIndexURL = "https://pypi.org/simple/"
 const DefaultNpmRegistryURL = "https://registry.npmjs.org"
 
@@ -39,12 +59,12 @@ func ParseSRI(sri string) (Digest, error) {
 
 // File represents a package distribution file discovered from an index.
 type File struct {
-	Filename        string           `json:"filename"`
-	URL             string           `json:"-"`
-	Digests         []Digest         `json:"digests,omitempty"`
-	ProvenanceURL   *string          `json:"provenance_url"`
-	Provenance      *json.RawMessage `json:"provenance,omitempty"`
-	ProvenanceError *string          `json:"provenance_error,omitempty"`
+	Filename        string      `json:"filename"`
+	URL             string      `json:"-"`
+	Digests         []Digest    `json:"digests,omitempty"`
+	ProvenanceURL   *string     `json:"provenance_url"`
+	Provenance      *Provenance `json:"provenance,omitempty"`
+	ProvenanceError *string     `json:"provenance_error,omitempty"`
 }
 
 // Result holds the lookup results for a package version.
@@ -108,7 +128,13 @@ func Lookup(ctx context.Context, pkg, version string, opts *Options) (*Result, e
 			if matched[i].ProvenanceURL == nil {
 				continue
 			}
-			prov, err := fetchProvenance(ctx, client, *matched[i].ProvenanceURL)
+			raw, err := fetchProvenance(ctx, client, *matched[i].ProvenanceURL)
+			if err != nil {
+				errStr := err.Error()
+				matched[i].ProvenanceError = &errStr
+				continue
+			}
+			prov, err := normalizePyPIProvenance(raw)
 			if err != nil {
 				errStr := err.Error()
 				matched[i].ProvenanceError = &errStr
@@ -147,7 +173,7 @@ func fetchIndex(ctx context.Context, client *http.Client, indexURL, pkg string) 
 	return resp.Body, nil
 }
 
-func fetchProvenance(ctx context.Context, client *http.Client, provURL string) (*json.RawMessage, error) {
+func fetchProvenance(ctx context.Context, client *http.Client, provURL string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, provURL, nil)
 	if err != nil {
 		return nil, err
@@ -160,10 +186,5 @@ func fetchProvenance(ctx context.Context, client *http.Client, provURL string) (
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("status %d fetching provenance from %s", resp.StatusCode, provURL)
 	}
-	data, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	raw := json.RawMessage(data)
-	return &raw, nil
+	return io.ReadAll(resp.Body)
 }
