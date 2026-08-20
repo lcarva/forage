@@ -81,7 +81,7 @@ result, err := forage.NpmLookup(ctx, "express", "4.21.2", &forage.Options{
     RegistryURL:     forage.DefaultNpmRegistryURL,
     FetchProvenance: true,
 })
-// result.Files contains filename, integrity/shasum, and optionally provenance data
+// result.Files contains filename, digests (algorithm + hex value), and optionally provenance data
 ```
 
 ## Examples
@@ -132,8 +132,8 @@ $ forage npm express 4.21.2
 express 4.21.2
 
   express-4.21.2.tgz
-    integrity: sha512-28HqgMZAmih1Czt9ny7qr6ek2qddF4FclbMzwhCREB6OFfH+rXAnuNCwo1/wFvrtbgsQDb4kSbX9de9lFbrXnA==
-    shasum: 3d462be8e2e301d287110edaa19036e9a91e5d42
+    sha512: dbc1ea80c6409a28750b3b7d9f2eeaafa7a4daa75d17815c95b333c21091101e8e15f1fead7027b8d0b0a35ff016faed6e0b100dbe2449b5fd75ef6515bad79c
+    sha1: cf250e48362174ead6cea4a566abef0162c1ec32
     provenance: (none)
 ```
 
@@ -145,8 +145,8 @@ $ forage npm @babel/core 7.26.10
 @babel/core 7.26.10
 
   core-7.26.10.tgz
-    integrity: sha512-vMqyb7XCDMPvJFFOaT9kxtiRh42GwlZEg1/uIgtZshS5a/CjY5QOWIPfLEBauQnEbHeIYh5Oo3sxACIg0MJnQ==
-    shasum: 754a8d29575463a1c1a72427bde5645de49a694b
+    sha512: bccab26fb5c20cc3ef24514e693f64c6d891878d86c25644835fee220b59b214b96bff0e69db947c28bb9329ca81cdd3c3fe94a360fe75bf6a06db608619b1c1
+    sha1: 5c876f83c8c4dcb233ee4b670c0606f2ac3000f9
     provenance: (none)
 ```
 
@@ -158,8 +158,8 @@ $ forage npm --fetch-provenance sigstore 3.1.0
 sigstore 3.1.0
 
   sigstore-3.1.0.tgz
-    integrity: sha512-...
-    shasum: ...
+    sha512: 669cd60051c816ac85139e9d5ea817fc3903459773fab45c8e8224fd1414e085f4c220afd65f12ed9ad70c770273eb9a7feea8ef0de1da5de0e86606e5328df5
+    sha1: 08dc6c0c425263e9fdab85ffdb6477550e2c511d
     provenance: (none)
     attestations: 2
       - https://slsa.dev/provenance/v1
@@ -207,7 +207,12 @@ $ forage python --json --fetch-provenance cryptography 48.0.0
   "files": [
     {
       "filename": "cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl",
-      "sha256": "0c558d2cdffd8f4bbb30fc7134c74d2ca9a476f830bb053074498fbc86f41ed6",
+      "digests": [
+        {
+          "algorithm": "sha256",
+          "value": "0c558d2cdffd8f4bbb30fc7134c74d2ca9a476f830bb053074498fbc86f41ed6"
+        }
+      ],
       "provenance_url": "https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl/provenance",
       "provenance": {
         "attestation_bundles": [
@@ -246,7 +251,7 @@ For Python indexes, Forage uses the [PEP 503 Simple Repository API](https://peps
 1. Fetches the simple index page for the given package (`{index_url}/{package}/`)
 2. Parses the HTML to extract from each `<a>` tag:
    - **Filename** — link text
-   - **sha256 digest** — from the URL fragment (`#sha256=...`)
+   - **Digests** — sha256 hash from the URL fragment (`#sha256=...`)
    - **Provenance URL** — from the `data-provenance` attribute ([PEP 740](https://peps.python.org/pep-0740/))
 3. Filters to files matching the requested version
 4. Optionally fetches each provenance URL to inline the attestation bundle
@@ -258,8 +263,7 @@ For npm packages, Forage uses the [npm registry API](https://github.com/npm/regi
 1. Fetches the version metadata for the given package (`{registry}/{package}/{version}`)
 2. Extracts from the `dist` object:
    - **Filename** — from the tarball URL
-   - **Integrity** — Subresource Integrity hash (e.g. `sha512-...`)
-   - **Shasum** — SHA-1 hash
+   - **Digests** — the `integrity` field (SRI format, e.g. `sha512-...`) is decoded to hex, and the `shasum` field (SHA-1) is included as-is
 3. Optionally fetches provenance attestations from the registry's attestation endpoint (`/-/npm/v1/attestations/{package}@{version}`)
 
 ## Notes on provenance

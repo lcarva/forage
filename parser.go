@@ -40,7 +40,7 @@ func parseSimpleIndex(r io.Reader) ([]File, error) {
 						u.RawFragment = ""
 						f.URL = u.String()
 						if strings.HasPrefix(frag, "sha256=") {
-							f.SHA256 = frag[len("sha256="):]
+							f.Digests = []Digest{{Algorithm: "sha256", Value: frag[len("sha256="):]}}
 						}
 					}
 				case "data-provenance":

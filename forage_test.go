@@ -201,6 +201,64 @@ func TestFetchIndex_AcceptHeader(t *testing.T) {
 	}
 }
 
+func TestParseSRI(t *testing.T) {
+	tests := []struct {
+		name      string
+		input     string
+		wantAlg   string
+		wantValue string
+		wantErr   bool
+	}{
+		{
+			name:      "valid sha512",
+			input:     "sha512-AQID",
+			wantAlg:   "sha512",
+			wantValue: "010203",
+		},
+		{
+			name:      "valid sha256",
+			input:     "sha256-AQID",
+			wantAlg:   "sha256",
+			wantValue: "010203",
+		},
+		{
+			name:    "missing hyphen",
+			input:   "sha512AQID",
+			wantErr: true,
+		},
+		{
+			name:    "empty string",
+			input:   "",
+			wantErr: true,
+		},
+		{
+			name:    "invalid base64",
+			input:   "sha512-!!!notbase64",
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := ParseSRI(tt.input)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if d.Algorithm != tt.wantAlg {
+				t.Errorf("Algorithm = %q, want %q", d.Algorithm, tt.wantAlg)
+			}
+			if d.Value != tt.wantValue {
+				t.Errorf("Value = %q, want %q", d.Value, tt.wantValue)
+			}
+		})
+	}
+}
+
 func TestLookup_FetchProvenance_ServerError(t *testing.T) {
 	mux := http.NewServeMux()
 	srv := httptest.NewServer(mux)

@@ -150,14 +150,8 @@ func printResult(result *forage.Result, outputJSON bool) error {
 	fmt.Printf("%s %s\n\n", result.Package, result.Version)
 	for _, f := range result.Files {
 		fmt.Printf("  %s\n", f.Filename)
-		if f.SHA256 != "" {
-			fmt.Printf("    sha256: %s\n", f.SHA256)
-		}
-		if f.Integrity != "" {
-			fmt.Printf("    integrity: %s\n", f.Integrity)
-		}
-		if f.Shasum != "" {
-			fmt.Printf("    shasum: %s\n", f.Shasum)
+		for _, d := range f.Digests {
+			fmt.Printf("    %s: %s\n", d.Algorithm, d.Value)
 		}
 		prov := "(none)"
 		if f.ProvenanceURL != nil {
