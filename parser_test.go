@@ -28,8 +28,8 @@ func TestParseSimpleIndex(t *testing.T) {
 	if files[0].Filename != "requests-2.32.2-py3-none-any.whl" {
 		t.Errorf("file[0].Filename = %q", files[0].Filename)
 	}
-	if files[0].SHA256 != "aabbcc" {
-		t.Errorf("file[0].SHA256 = %q", files[0].SHA256)
+	if len(files[0].Digests) != 1 || files[0].Digests[0].Algorithm != "sha256" || files[0].Digests[0].Value != "aabbcc" {
+		t.Errorf("file[0].Digests = %v", files[0].Digests)
 	}
 	if files[0].ProvenanceURL != nil {
 		t.Errorf("file[0].ProvenanceURL = %q, want nil", *files[0].ProvenanceURL)
@@ -39,8 +39,8 @@ func TestParseSimpleIndex(t *testing.T) {
 	if files[1].Filename != "requests-2.32.2.tar.gz" {
 		t.Errorf("file[1].Filename = %q", files[1].Filename)
 	}
-	if files[1].SHA256 != "ddeeff" {
-		t.Errorf("file[1].SHA256 = %q", files[1].SHA256)
+	if len(files[1].Digests) != 1 || files[1].Digests[0].Algorithm != "sha256" || files[1].Digests[0].Value != "ddeeff" {
+		t.Errorf("file[1].Digests = %v", files[1].Digests)
 	}
 	wantProv := "https://example.com/provenance/requests-2.32.2.tar.gz"
 	if files[1].ProvenanceURL == nil || *files[1].ProvenanceURL != wantProv {
@@ -51,8 +51,8 @@ func TestParseSimpleIndex(t *testing.T) {
 	if files[2].Filename != "requests-2.32.3.tar.gz" {
 		t.Errorf("file[2].Filename = %q", files[2].Filename)
 	}
-	if files[2].SHA256 != "112233" {
-		t.Errorf("file[2].SHA256 = %q", files[2].SHA256)
+	if len(files[2].Digests) != 1 || files[2].Digests[0].Algorithm != "sha256" || files[2].Digests[0].Value != "112233" {
+		t.Errorf("file[2].Digests = %v", files[2].Digests)
 	}
 }
 
@@ -65,8 +65,8 @@ func TestParseSimpleIndex_NoFragment(t *testing.T) {
 	if len(files) != 1 {
 		t.Fatalf("got %d files, want 1", len(files))
 	}
-	if files[0].SHA256 != "" {
-		t.Errorf("SHA256 = %q, want empty", files[0].SHA256)
+	if len(files[0].Digests) != 0 {
+		t.Errorf("Digests = %v, want empty", files[0].Digests)
 	}
 }
 

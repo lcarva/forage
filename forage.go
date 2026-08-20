@@ -2,6 +2,8 @@ package forage
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,13 +14,34 @@ import (
 const DefaultIndexURL = "https://pypi.org/simple/"
 const DefaultNpmRegistryURL = "https://registry.npmjs.org"
 
+// Digest represents a single hash digest with its algorithm name and hex-encoded value.
+type Digest struct {
+	Algorithm string `json:"algorithm"`
+	Value     string `json:"value"`
+}
+
+// ParseSRI parses a Subresource Integrity string (e.g. "sha512-base64data==")
+// into its algorithm name and hex-encoded digest value.
+func ParseSRI(sri string) (Digest, error) {
+	parts := strings.SplitN(sri, "-", 2)
+	if len(parts) != 2 {
+		return Digest{}, fmt.Errorf("invalid SRI string: %q", sri)
+	}
+	raw, err := base64.StdEncoding.DecodeString(parts[1])
+	if err != nil {
+		return Digest{}, fmt.Errorf("decoding SRI base64 for %s: %w", parts[0], err)
+	}
+	return Digest{
+		Algorithm: parts[0],
+		Value:     hex.EncodeToString(raw),
+	}, nil
+}
+
 // File represents a package distribution file discovered from an index.
 type File struct {
 	Filename        string           `json:"filename"`
 	URL             string           `json:"-"`
-	SHA256          string           `json:"sha256,omitempty"`
-	Integrity       string           `json:"integrity,omitempty"`
-	Shasum          string           `json:"shasum,omitempty"`
+	Digests         []Digest         `json:"digests,omitempty"`
 	ProvenanceURL   *string          `json:"provenance_url"`
 	Provenance      *json.RawMessage `json:"provenance,omitempty"`
 	ProvenanceError *string          `json:"provenance_error,omitempty"`

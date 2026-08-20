@@ -36,10 +36,19 @@ func NpmLookup(ctx context.Context, pkg, version string, opts *Options) (*Result
 	}
 
 	file := File{
-		Filename:  path.Base(meta.Dist.Tarball),
-		URL:       meta.Dist.Tarball,
-		Integrity: meta.Dist.Integrity,
-		Shasum:    meta.Dist.Shasum,
+		Filename: path.Base(meta.Dist.Tarball),
+		URL:      meta.Dist.Tarball,
+	}
+
+	if meta.Dist.Integrity != "" {
+		d, err := ParseSRI(meta.Dist.Integrity)
+		if err != nil {
+			return nil, fmt.Errorf("parsing integrity for %s@%s: %w", pkg, version, err)
+		}
+		file.Digests = append(file.Digests, d)
+	}
+	if meta.Dist.Shasum != "" {
+		file.Digests = append(file.Digests, Digest{Algorithm: "sha1", Value: meta.Dist.Shasum})
 	}
 
 	if opts != nil && opts.FetchProvenance {

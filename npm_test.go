@@ -13,7 +13,7 @@ const sigstoreVersionJSON = `{
 	"name": "sigstore",
 	"version": "2.3.1",
 	"dist": {
-		"integrity": "sha512-abcdef1234567890==",
+		"integrity": "sha512-AQID",
 		"shasum": "deadbeef12345678",
 		"tarball": "TARBALL_URL/sigstore/-/sigstore-2.3.1.tgz"
 	}
@@ -35,7 +35,7 @@ func newNpmTestServer(t *testing.T, attestationBody string) *httptest.Server {
 			"name": "@scope/mypkg",
 			"version": "1.0.0",
 			"dist": {
-				"integrity": "sha512-scopedhash==",
+				"integrity": "sha512-BAUG",
 				"shasum": "scopedshasum",
 				"tarball": "` + srv.URL + `/@scope/mypkg/-/mypkg-1.0.0.tgz"
 			}
@@ -78,11 +78,14 @@ func TestNpmLookup(t *testing.T) {
 	if f.Filename != "sigstore-2.3.1.tgz" {
 		t.Errorf("Filename = %q", f.Filename)
 	}
-	if f.Integrity != "sha512-abcdef1234567890==" {
-		t.Errorf("Integrity = %q", f.Integrity)
+	if len(f.Digests) != 2 {
+		t.Fatalf("got %d digests, want 2", len(f.Digests))
 	}
-	if f.Shasum != "deadbeef12345678" {
-		t.Errorf("Shasum = %q", f.Shasum)
+	if f.Digests[0].Algorithm != "sha512" || f.Digests[0].Value != "010203" {
+		t.Errorf("Digests[0] = %+v", f.Digests[0])
+	}
+	if f.Digests[1].Algorithm != "sha1" || f.Digests[1].Value != "deadbeef12345678" {
+		t.Errorf("Digests[1] = %+v", f.Digests[1])
 	}
 }
 
@@ -248,7 +251,7 @@ func TestNpmLookup_AcceptHeader(t *testing.T) {
 			"version": "1.0.0",
 			"dist": {
 				"tarball": "https://example.com/testpkg-1.0.0.tgz",
-				"integrity": "sha512-abc==",
+				"integrity": "sha512-BwgJ",
 				"shasum": "def"
 			}
 		}`))
