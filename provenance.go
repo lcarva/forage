@@ -15,7 +15,6 @@ type provenanceEnvelope struct {
 }
 
 type attestationBundle struct {
-	Publisher    Publisher         `json:"publisher"`
 	Attestations []json.RawMessage `json:"attestations"`
 }
 
@@ -34,13 +33,8 @@ func normalizePyPIProvenance(raw []byte) (*Provenance, error) {
 		return nil, fmt.Errorf("parsing PyPI provenance: %w", err)
 	}
 
-	var pub *Publisher
 	var attestations []Attestation
 	for _, bundle := range env.AttestationBundles {
-		if pub == nil {
-			p := bundle.Publisher
-			pub = &p
-		}
 		for _, raw := range bundle.Attestations {
 			attestations = append(attestations, Attestation{
 				MediaType:     mediaTypePyPIAttestation,
@@ -51,7 +45,6 @@ func normalizePyPIProvenance(raw []byte) (*Provenance, error) {
 	}
 
 	return &Provenance{
-		Publisher:    pub,
 		Attestations: attestations,
 	}, nil
 }
@@ -113,9 +106,6 @@ func FormatProvenance(p *Provenance) string {
 	}
 
 	var lines []string
-	if p.Publisher != nil {
-		lines = append(lines, fmt.Sprintf("publisher: %s", formatPublisher(*p.Publisher)))
-	}
 	lines = append(lines, fmt.Sprintf("attestations: %d", len(p.Attestations)))
 	for _, a := range p.Attestations {
 		if a.PredicateType != "" {
@@ -129,25 +119,4 @@ func FormatProvenance(p *Provenance) string {
 
 	lines = append(lines, "(use --json for full provenance data)")
 	return strings.Join(lines, "\n")
-}
-
-func formatPublisher(p Publisher) string {
-	var parts []string
-	if p.Repository != "" {
-		parts = append(parts, p.Repository)
-	}
-	if p.Workflow != "" {
-		parts = append(parts, "via "+p.Workflow)
-	}
-
-	if p.Kind != "" && len(parts) > 0 {
-		return fmt.Sprintf("%s (%s)", p.Kind, strings.Join(parts, " "))
-	}
-	if p.Kind != "" {
-		return p.Kind
-	}
-	if len(parts) > 0 {
-		return strings.Join(parts, " ")
-	}
-	return "(unknown)"
 }

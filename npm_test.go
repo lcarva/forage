@@ -167,9 +167,6 @@ func TestNpmLookup_FetchProvenance(t *testing.T) {
 	if f.Provenance == nil {
 		t.Fatal("expected provenance data")
 	}
-	if f.Provenance.Publisher != nil {
-		t.Error("expected nil publisher for npm")
-	}
 	if len(f.Provenance.Attestations) != 2 {
 		t.Fatalf("got %d attestations, want 2", len(f.Provenance.Attestations))
 	}
