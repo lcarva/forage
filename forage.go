@@ -13,7 +13,6 @@ import (
 
 // Provenance holds normalized, ecosystem-agnostic provenance attestation data.
 type Provenance struct {
-	Publisher    *Publisher    `json:"publisher,omitempty"`
 	Attestations []Attestation `json:"attestations"`
 }
 
@@ -22,13 +21,6 @@ type Attestation struct {
 	MediaType     string          `json:"mediaType"`
 	PredicateType string          `json:"predicateType,omitempty"`
 	Bundle        json.RawMessage `json:"bundle"`
-}
-
-// Publisher describes who published the attestations.
-type Publisher struct {
-	Kind       string `json:"kind"`
-	Repository string `json:"repository,omitempty"`
-	Workflow   string `json:"workflow,omitempty"`
 }
 
 const DefaultIndexURL = "https://pypi.org/simple/"

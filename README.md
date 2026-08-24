@@ -215,11 +215,6 @@ $ forage python --json --fetch-provenance cryptography 48.0.0
       ],
       "provenance_url": "https://pypi.org/integrity/cryptography/48.0.0/cryptography-48.0.0-cp311-abi3-macosx_10_9_universal2.whl/provenance",
       "provenance": {
-        "publisher": {
-          "kind": "GitHub",
-          "repository": "pyca/cryptography",
-          "workflow": "pypi-publish.yml"
-        },
         "attestations": [
           {
             "mediaType": "application/vnd.pypi.attestation+json",

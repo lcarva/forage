@@ -29,15 +29,6 @@ func TestNormalizePyPIProvenance(t *testing.T) {
 	if err != nil {
 		t.Fatalf("normalizePyPIProvenance() error: %v", err)
 	}
-	if prov.Publisher == nil {
-		t.Fatal("expected publisher")
-	}
-	if prov.Publisher.Kind != "GitHub" {
-		t.Errorf("publisher.Kind = %q, want GitHub", prov.Publisher.Kind)
-	}
-	if prov.Publisher.Repository != "pypa/sampleproject" {
-		t.Errorf("publisher.Repository = %q", prov.Publisher.Repository)
-	}
 	if len(prov.Attestations) != 1 {
 		t.Fatalf("got %d attestations, want 1", len(prov.Attestations))
 	}
@@ -65,9 +56,6 @@ func TestNormalizePyPIProvenance_MultipleBundles(t *testing.T) {
 	prov, err := normalizePyPIProvenance([]byte(input))
 	if err != nil {
 		t.Fatalf("error: %v", err)
-	}
-	if prov.Publisher.Kind != "GitHub" {
-		t.Errorf("expected first publisher, got %q", prov.Publisher.Kind)
 	}
 	if len(prov.Attestations) != 3 {
 		t.Errorf("got %d attestations, want 3", len(prov.Attestations))
@@ -116,9 +104,6 @@ func TestNormalizeNpmProvenance(t *testing.T) {
 	prov, err := normalizeNpmProvenance([]byte(input))
 	if err != nil {
 		t.Fatalf("normalizeNpmProvenance() error: %v", err)
-	}
-	if prov.Publisher != nil {
-		t.Error("expected nil publisher for npm")
 	}
 	if len(prov.Attestations) != 2 {
 		t.Fatalf("got %d attestations, want 2", len(prov.Attestations))
@@ -189,20 +174,14 @@ func TestFormatProvenance(t *testing.T) {
 		contains []string
 	}{
 		{
-			name: "full publisher with attestations",
+			name: "with attestations",
 			input: &Provenance{
-				Publisher: &Publisher{
-					Kind:       "GitHub",
-					Repository: "pypa/sampleproject",
-					Workflow:   "release.yml",
-				},
 				Attestations: []Attestation{
 					{MediaType: mediaTypePyPIAttestation, PredicateType: "https://docs.pypi.org/attestations/publish/v1"},
 					{MediaType: mediaTypePyPIAttestation, PredicateType: "https://slsa.dev/provenance/v1"},
 				},
 			},
 			contains: []string{
-				"publisher: GitHub (pypa/sampleproject via release.yml)",
 				"attestations: 2",
 				"https://docs.pypi.org/attestations/publish/v1",
 				"https://slsa.dev/provenance/v1",
@@ -210,18 +189,7 @@ func TestFormatProvenance(t *testing.T) {
 			},
 		},
 		{
-			name: "kind only publisher",
-			input: &Provenance{
-				Publisher:    &Publisher{Kind: "GitHub"},
-				Attestations: []Attestation{{MediaType: mediaTypePyPIAttestation}},
-			},
-			contains: []string{
-				"publisher: GitHub",
-				"attestations: 1",
-			},
-		},
-		{
-			name: "no publisher (npm style)",
+			name: "single attestation",
 			input: &Provenance{
 				Attestations: []Attestation{
 					{MediaType: "application/vnd.dev.sigstore.bundle.v0.3+json", PredicateType: "https://slsa.dev/provenance/v1"},
@@ -238,16 +206,6 @@ func TestFormatProvenance(t *testing.T) {
 			contains: []string{
 				"attestations: 0",
 				"(no attestation bundles)",
-			},
-		},
-		{
-			name: "unknown publisher",
-			input: &Provenance{
-				Publisher:    &Publisher{},
-				Attestations: []Attestation{{MediaType: mediaTypePyPIAttestation}},
-			},
-			contains: []string{
-				"publisher: (unknown)",
 			},
 		},
 	}

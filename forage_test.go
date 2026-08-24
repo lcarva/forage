@@ -135,9 +135,6 @@ func TestLookup_FetchProvenance(t *testing.T) {
 	if prov == nil {
 		t.Fatal("expected provenance data")
 	}
-	if prov.Publisher == nil || prov.Publisher.Kind != "GitHub" {
-		t.Errorf("expected GitHub publisher, got %+v", prov.Publisher)
-	}
 	if len(prov.Attestations) != 1 {
 		t.Fatalf("got %d attestations, want 1", len(prov.Attestations))
 	}
