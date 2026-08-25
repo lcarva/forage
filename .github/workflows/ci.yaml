@@ -30,6 +30,8 @@ jobs:
 
       - uses: astral-sh/setup-uv@v6
 
-      - uses: sigstore/cosign-installer@v3
+      - uses: sigstore/cosign-installer@v4.1.2
+        with:
+          cosign-release: 'v3.1.2'
 
       - run: make integration
