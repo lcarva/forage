@@ -228,6 +228,62 @@ $ forage python --json --fetch-provenance cryptography 48.0.0
 }
 ```
 
+### Verifying attestations
+
+Forage preserves attestation bundles verbatim for downstream verification. Here are
+examples showing how to verify fetched attestations using ecosystem-standard tools.
+
+#### PyPI — verify with pypi-attestations
+
+Extract the attestation bundle from forage's output and verify it against the downloaded
+artifact using [pypi-attestations](https://github.com/sigstore/sigstore-python/tree/main/pypi_attestations):
+
+```
+$ forage python --json --fetch-provenance cryptography 48.0.0 \
+    | jq '.files[] | select(.filename == "cryptography-48.0.0.tar.gz")
+          | .provenance.attestations[0].bundle' \
+    > cryptography-48.0.0.tar.gz.publish.attestation
+
+$ curl -sLO "$(curl -s 'https://pypi.org/pypi/cryptography/48.0.0/json' \
+    | jq -r '.urls[] | select(.filename == "cryptography-48.0.0.tar.gz") | .url')"
+
+$ uvx --prerelease=allow pypi-attestations verify attestation \
+    --identity "https://github.com/pyca/cryptography/.github/workflows/pypi-publish.yml@refs/heads/46.0.x" \
+    cryptography-48.0.0.tar.gz
+OK: cryptography-48.0.0.tar.gz.publish.attestation
+```
+
+The sidecar file must be named `<filename>.publish.attestation` (derived from the
+predicate type). You can discover the expected `--identity` value by inspecting the
+attestation:
+
+```
+$ uvx --prerelease=allow pypi-attestations inspect cryptography-48.0.0.tar.gz.publish.attestation
+```
+
+#### npm — verify with cosign
+
+Extract the SLSA provenance bundle (attestation index 1) and verify it with
+[cosign](https://github.com/sigstore/cosign):
+
+```
+$ forage npm --json --fetch-provenance sigstore 3.1.0 \
+    | jq '.files[0].provenance.attestations[1].bundle' > bundle.json
+
+$ cosign verify-blob-attestation \
+    --bundle bundle.json \
+    --certificate-identity "https://github.com/sigstore/sigstore-js/.github/workflows/release.yml@refs/heads/main" \
+    --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+    --type "https://slsa.dev/provenance/v1" \
+    --check-claims=false \
+    /dev/null
+Verified OK
+```
+
+npm packages typically have two attestations: a publish attestation (index 0) signed by
+npm's own key, and a SLSA provenance attestation (index 1) signed via Sigstore. The SLSA
+provenance attestation is the one verifiable with cosign.
+
 ## Development
 
 Run the full CI suite locally:
@@ -245,6 +301,7 @@ Individual targets are also available:
 | `make test` | Run tests |
 | `make build` | Build all packages |
 | `make ci` | Run `fmt`, `vet`, and `test` |
+| `make integration` | Run integration tests (requires `jq`, `cosign`, `uv`) |
 
 ## How it works
 

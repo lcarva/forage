@@ -17,3 +17,19 @@ jobs:
           go-version-file: go.mod
 
       - run: make ci
+
+  integration:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: astral-sh/setup-uv@v6
+
+      - uses: sigstore/cosign-installer@v3
+
+      - run: make integration

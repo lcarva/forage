@@ -1,4 +1,4 @@
-.PHONY: build test fmt vet ci
+.PHONY: build test fmt vet ci integration
 
 
 build:
@@ -19,3 +19,6 @@ vet:
 	go vet ./...
 
 ci: fmt vet test
+
+integration: build
+	go test -tags=integration -v ./...
