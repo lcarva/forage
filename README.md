@@ -270,13 +270,14 @@ Extract the SLSA provenance bundle (attestation index 1) and verify it with
 $ forage npm --json --fetch-provenance sigstore 3.1.0 \
     | jq '.files[0].provenance.attestations[1].bundle' > bundle.json
 
+$ curl -sLO "$(curl -s 'https://registry.npmjs.org/sigstore/3.1.0' | jq -r '.dist.tarball')"
+
 $ cosign verify-blob-attestation \
     --bundle bundle.json \
     --certificate-identity "https://github.com/sigstore/sigstore-js/.github/workflows/release.yml@refs/heads/main" \
     --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
     --type "https://slsa.dev/provenance/v1" \
-    --check-claims=false \
-    /dev/null
+    sigstore-3.1.0.tgz
 Verified OK
 ```
 

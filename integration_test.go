@@ -111,13 +111,17 @@ func TestNpmAttestationVerification(t *testing.T) {
 		t.Fatalf("write bundle: %v", err)
 	}
 
+	artifactPath := filepath.Join(dir, file.Filename)
+	if err := downloadFile(ctx, file.URL, artifactPath); err != nil {
+		t.Fatalf("download artifact: %v", err)
+	}
+
 	verify := exec.CommandContext(ctx, "cosign", "verify-blob-attestation",
 		"--bundle", bundlePath,
 		"--certificate-identity", "https://github.com/sigstore/sigstore-js/.github/workflows/release.yml@refs/heads/main",
 		"--certificate-oidc-issuer", "https://token.actions.githubusercontent.com",
 		"--type", "https://slsa.dev/provenance/v1",
-		"--check-claims=false",
-		"/dev/null",
+		artifactPath,
 	)
 	if out, err := verify.CombinedOutput(); err != nil {
 		t.Fatalf("cosign verify failed: %v\n%s", err, out)
