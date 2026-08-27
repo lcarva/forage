@@ -303,6 +303,7 @@ Individual targets are also available:
 | `make build` | Build all packages |
 | `make ci` | Run `fmt`, `vet`, and `test` |
 | `make integration` | Run integration tests (requires `jq`, `cosign`, `uv`) |
+| `make zizmor` | Lint GitHub Actions workflows with [zizmor](https://zizmor.sh) (requires `uv`) |
 
 ## How it works
 

@@ -1,4 +1,4 @@
-.PHONY: build test fmt vet ci integration
+.PHONY: build test fmt vet ci integration zizmor
 
 
 build:
@@ -17,6 +17,9 @@ fmt:
 
 vet:
 	go vet ./...
+
+zizmor:
+	uvx zizmor .
 
 ci: fmt vet test
 
