@@ -3,6 +3,7 @@
 ## Build & Test
 
 ```bash
+make check     # Run everything: ci, integration, and zizmor
 make ci        # Run fmt, vet, and test
 make test      # Run tests only
 make fmt       # Check formatting (gofmt)

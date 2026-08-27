@@ -1,4 +1,4 @@
-.PHONY: build test fmt vet ci integration zizmor
+.PHONY: build test fmt vet ci integration zizmor check
 
 
 build:
@@ -25,3 +25,5 @@ ci: fmt vet test
 
 integration: build
 	go test -tags=integration -v ./...
+
+check: ci integration zizmor
