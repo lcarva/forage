@@ -248,8 +248,10 @@ examples showing how to verify fetched attestations using ecosystem-standard too
 
 #### PyPI — verify with pypi-attestations
 
-Extract the attestation bundle from forage's output and verify it against the downloaded
-artifact using [pypi-attestations](https://github.com/sigstore/sigstore-python/tree/main/pypi_attestations):
+This is the common case: a package from `pypi.org`, whose attestations are signed
+keyless via the public Sigstore instance. Extract the attestation bundle from forage's
+output and verify it against the downloaded artifact using
+[pypi-attestations](https://github.com/trailofbits/pypi-attestations):
 
 ```
 $ forage python --json --fetch-provenance cryptography 48.0.0 \
@@ -273,6 +275,11 @@ attestation:
 ```
 $ uvx --prerelease=allow pypi-attestations inspect cryptography-48.0.0.tar.gz.publish.attestation
 ```
+
+`pypi-attestations` only handles this common case — keyless signatures from the
+**public** Sigstore instance. If you are verifying against a **custom Python index**,
+a **different Sigstore instance**, or a **long-lived signing key**, some additional
+work is needed; see [Verifying Python provenance](docs/verifying-provenance.md).
 
 #### npm — verify with cosign
 
