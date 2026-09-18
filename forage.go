@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 )
 
@@ -68,10 +69,12 @@ type Result struct {
 
 // Options configures a Lookup call.
 type Options struct {
-	IndexURL        string
-	RegistryURL     string
-	FetchProvenance bool
-	HTTPClient      *http.Client
+	IndexURL           string
+	RegistryURL        string
+	FetchProvenance    bool
+	HTTPClient         *http.Client
+	CredentialProvider CredentialProvider
+	NetrcPath          string
 }
 
 func (o *Options) indexURL() string {
@@ -91,7 +94,7 @@ func (o *Options) httpClient() *http.Client {
 // Lookup queries a PEP 503 simple index for files matching the given package and version.
 func Lookup(ctx context.Context, pkg, version string, opts *Options) (*Result, error) {
 	indexURL := opts.indexURL()
-	client := opts.httpClient()
+	client := opts.authenticatedClient()
 
 	body, err := fetchIndex(ctx, client, indexURL, pkg)
 	if err != nil {
@@ -158,9 +161,17 @@ func fetchIndex(ctx context.Context, client *http.Client, indexURL, pkg string) 
 		resp.Body.Close()
 		return nil, fmt.Errorf("package '%s' not found at %s", pkg, u)
 	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		resp.Body.Close()
+		return nil, fmt.Errorf("authentication required by %s", redactURL(u))
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		resp.Body.Close()
+		return nil, fmt.Errorf("authentication forbidden by %s", redactURL(u))
+	}
 	if resp.StatusCode != http.StatusOK {
 		resp.Body.Close()
-		return nil, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, u)
+		return nil, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, redactURL(u))
 	}
 	return resp.Body, nil
 }
@@ -176,7 +187,22 @@ func fetchProvenance(ctx context.Context, client *http.Client, provURL string) (
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("status %d fetching provenance from %s", resp.StatusCode, provURL)
+		if resp.StatusCode == http.StatusUnauthorized {
+			return nil, fmt.Errorf("authentication required by %s", redactURL(provURL))
+		}
+		if resp.StatusCode == http.StatusForbidden {
+			return nil, fmt.Errorf("authentication forbidden by %s", redactURL(provURL))
+		}
+		return nil, fmt.Errorf("status %d fetching provenance from %s", resp.StatusCode, redactURL(provURL))
 	}
 	return io.ReadAll(resp.Body)
+}
+
+func redactURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return raw
+	}
+	u.User = nil
+	return u.String()
 }

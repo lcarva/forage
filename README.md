@@ -37,6 +37,9 @@ forage python [flags] <package> <version>
 | Flag | Description | Default |
 |---|---|---|
 | `--index-url` | PEP 503 simple index URL | `https://pypi.org/simple/` |
+| `--username` | HTTP Basic Auth username or token | unset |
+| `--password-stdin` | Read the HTTP Basic Auth password from stdin | `false` |
+| `--netrc` | Path to a netrc file | platform default |
 | `--json` | Output JSON instead of human-readable text | `false` |
 | `--fetch-provenance` | Fetch and inline provenance attestation data | `false` |
 
@@ -72,8 +75,18 @@ import "github.com/lcarva/forage"
 
 // Python (PEP 503)
 result, err := forage.Lookup(ctx, "cryptography", "48.0.0", &forage.Options{
-    IndexURL:        forage.DefaultIndexURL,
-    FetchProvenance: true,
+	IndexURL:        forage.DefaultIndexURL,
+	FetchProvenance: true,
+})
+
+// Or provide credentials through a scoped provider.
+result, err = forage.Lookup(ctx, "private-package", "1.2.3", &forage.Options{
+	IndexURL: "https://packages.example.com/simple/",
+	CredentialProvider: forage.BasicAuthProvider{
+		Origin:   "https://packages.example.com",
+		Username: "__token__",
+		Password: "token",
+	},
 })
 
 // npm
@@ -319,6 +332,19 @@ For Python indexes, Forage uses the [PEP 503 Simple Repository API](https://peps
 4. Optionally fetches each provenance URL to inline the attestation bundle
 
 This approach is entirely standards-based and does not depend on any index-specific API (e.g. PyPI's JSON API or Pulp's REST API).
+
+### Authentication
+
+Python index requests support HTTP Basic authentication. The CLI accepts a username or token directly and can read the password from standard input:
+
+```
+printf '%s\n' "$PYPI_TOKEN" | forage python \
+  --index-url https://packages.example.com/simple/ \
+  --username __token__ --password-stdin \
+  private-package 1.2.3
+```
+
+Forage also reads credentials from a netrc file. Use `--netrc` to select a specific file; otherwise it checks the platform default (`~/.netrc` or `_netrc`). Only host-specific `machine` entries are used; a `default` entry is ignored so credentials are never sent to indexes you did not intend to authenticate against. When `--netrc` is given the file must be readable and well-formed; the platform default is optional and an unreadable one is ignored with a warning. Do not put passwords directly in shell arguments when possible.
 
 For npm packages, Forage uses the [npm registry API](https://github.com/npm/registry/blob/main/docs/responses/package-metadata.md):
 

@@ -28,7 +28,7 @@ func NpmLookup(ctx context.Context, pkg, version string, opts *Options) (*Result
 	if opts != nil && opts.RegistryURL != "" {
 		registryURL = opts.RegistryURL
 	}
-	client := opts.httpClient()
+	client := opts.authenticatedClient()
 
 	meta, err := fetchNpmVersionMeta(ctx, client, registryURL, pkg, version)
 	if err != nil {
@@ -89,10 +89,16 @@ func fetchNpmVersionMeta(ctx context.Context, client *http.Client, indexURL, pkg
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound {
-		return nil, fmt.Errorf("package '%s@%s' not found at %s", pkg, version, u)
+		return nil, fmt.Errorf("package '%s@%s' not found at %s", pkg, version, redactURL(u))
+	}
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, fmt.Errorf("authentication required by %s", redactURL(u))
+	}
+	if resp.StatusCode == http.StatusForbidden {
+		return nil, fmt.Errorf("authentication forbidden by %s", redactURL(u))
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, u)
+		return nil, fmt.Errorf("unexpected status %d from %s", resp.StatusCode, redactURL(u))
 	}
 
 	data, err := io.ReadAll(resp.Body)
