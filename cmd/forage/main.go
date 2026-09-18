@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/url"
 	"os"
 	"strings"
 
@@ -31,6 +33,9 @@ func main() {
 
 	var indexURL string
 	var fetchProvenance bool
+	var username string
+	var passwordStdin bool
+	var netrcPath string
 
 	pythonCmd := &cobra.Command{
 		Use:   "python <package> <version>",
@@ -38,10 +43,38 @@ func main() {
 		Args:  cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pkg, version := args[0], args[1]
+			var provider forage.CredentialProvider
+			if username != "" || passwordStdin {
+				if username == "" {
+					return fmt.Errorf("--username is required with --password-stdin")
+				}
+				password := ""
+				if passwordStdin {
+					data, err := io.ReadAll(os.Stdin)
+					if err != nil {
+						return fmt.Errorf("reading password from stdin: %w", err)
+					}
+					password = strings.TrimSuffix(strings.TrimSuffix(string(data), "\n"), "\r")
+				}
+				u, err := url.Parse(indexURL)
+				if err != nil {
+					return fmt.Errorf("parsing index URL: %w", err)
+				}
+				if u.Scheme == "" || u.Host == "" {
+					return fmt.Errorf("index URL must include a scheme and host: %q", indexURL)
+				}
+				provider = forage.BasicAuthProvider{
+					Origin:   strings.ToLower(u.Scheme + "://" + u.Host),
+					Username: username,
+					Password: password,
+				}
+			}
 
 			opts := &forage.Options{
-				IndexURL:        indexURL,
-				FetchProvenance: fetchProvenance,
+				IndexURL:           indexURL,
+				FetchProvenance:    fetchProvenance,
+				CredentialProvider: provider,
+				NetrcPath:          netrcPath,
 			}
 			result, err := forage.Lookup(context.Background(), pkg, version, opts)
 			if err != nil {
@@ -56,6 +89,9 @@ func main() {
 		"PEP 503 simple index URL")
 	pythonCmd.Flags().BoolVar(&fetchProvenance, "fetch-provenance", false,
 		"Fetch and inline provenance attestation data")
+	pythonCmd.Flags().StringVar(&username, "username", "", "HTTP Basic Auth username or token")
+	pythonCmd.Flags().BoolVar(&passwordStdin, "password-stdin", false, "Read the HTTP Basic Auth password from stdin")
+	pythonCmd.Flags().StringVar(&netrcPath, "netrc", "", "Path to a netrc file")
 
 	var npmRegistryURL string
 	var npmFetchProvenance bool
