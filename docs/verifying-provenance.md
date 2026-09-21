@@ -47,14 +47,33 @@ PEP 740 object, so the first step in every case is a small `jq` reshape. The
 Sigstore bundle's `verificationMaterial` is a *oneof*, so the reshape differs only
 in that field; the `dsseEnvelope` is identical everywhere.
 
+We also need the digest and digest algorithm for verification. This avoids having to download the
+artifact itself. As such, save the output of forage into a variable so we can extract all the
+required values accordingly.
+
+```bash
+INFO="$(
+    forage python --index-url "$INDEX_URL" --json --fetch-provenance "$PKG" "$VERSION" | \
+    jq --arg artifact "${ARTIFACT}" \
+    '.files[] | select(.filename == $artifact)')"
+```
+
 Get the PEP 740 object first:
 
 ```bash
-forage python --index-url "$INDEX_URL" --json --fetch-provenance "$PKG" "$VERSION" \
-  | jq --arg f "$ARTIFACT" \
-      '.files[] | select(.filename == $f) | .provenance.attestations[0].bundle' \
-  > pep740.json
+<<< "${INFO}" jq '.provenance.attestations[0].bundle' > pep740.json
 ```
+
+Then, the get the artifact's digest and digest algorithm:
+
+```bash
+DIGEST="$(<<< "${INFO}" jq -r '.digests[0].value')"
+DIGESTALG="$(<<< "${INFO}" jq -r '.digests[0].algorithm')"
+```
+
+The digest must be raw hexadecimal: pass `5c39...`, not `sha256:5c39...`.
+Both `--digest` and `--digestAlg` are required, and `--digestAlg` must match an
+algorithm key in the attestation's in-toto subject.
 
 ### Keyless (public or private Sigstore)
 
@@ -86,7 +105,7 @@ cosign verify-blob-attestation \
     --certificate-identity "$IDENTITY" \
     --certificate-oidc-issuer "$OIDC_ISSUER" \
     --type "$PREDICATE_TYPE" \
-    "$ARTIFACT"
+    --digest "$DIGEST" --digestAlg "$DIGESTALG"
 ```
 
 `$IDENTITY` is the signing workflow (e.g.
@@ -138,7 +157,7 @@ cosign verify-blob-attestation \
     --bundle bundle.json \
     --key signer.pub \
     --type "$PREDICATE_TYPE" \
-    "$ARTIFACT"
+    --digest "$DIGEST" --digestAlg "$DIGESTALG"
 ```
 
 If it is **not** logged, there is nothing to anchor a timestamp — which is fine for
@@ -149,7 +168,7 @@ cosign verify-blob-attestation \
     --bundle bundle.json \
     --key signer.pub --insecure-ignore-tlog \
     --type "$PREDICATE_TYPE" \
-    "$ARTIFACT"
+    --digest "$DIGEST" --digestAlg "$DIGESTALG"
 ```
 
 The `hint` is unused because the key is supplied directly via `--key`.
