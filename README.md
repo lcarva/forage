@@ -305,6 +305,26 @@ npm packages typically have two attestations: a publish attestation (index 0) si
 npm's own key, and a SLSA provenance attestation (index 1) signed via Sigstore. The SLSA
 provenance attestation is the one verifiable with cosign.
 
+It is possible to verify the artifact without having to download it. To do so, extract the digest
+and digest algorithm from the forage output and use them in the `--digest` and `--digestAlg`
+parameters of the cosign command. Consider storing the output of forage into a variable to avoid
+duplicate requests:
+
+```bash
+INFO="$(forage npm --json --fetch-provenance sigstore 3.1.0 | jq '.files[0]')"
+
+<<< "${INFO}" jq '.provenance.attestations[1].bundle' > bundle.json
+DIGEST="$(<<< "${INFO}" jq -r '.digests[0].value')"
+DIGESTALG="$(<<< "${INFO}" jq -r '.digests[0].algorithm')"
+
+cosign verify-blob-attestation \
+    --bundle bundle.json \
+    --certificate-identity "https://github.com/sigstore/sigstore-js/.github/workflows/release.yml@refs/heads/main" \
+    --certificate-oidc-issuer "https://token.actions.githubusercontent.com" \
+    --type "https://slsa.dev/provenance/v1" \
+    --digest "${DIGEST}" --digestAlg "${DIGESTALG}"
+```
+
 ## Development
 
 Run the full CI suite locally:
